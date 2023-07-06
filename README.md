@@ -8,7 +8,7 @@ Semi-automated pupil detection and gaze determination
 
 
 ## GUI Example 
-![geezer_og](img/geezer_og.png)
+![geezer_og](assets/geezer_og.png)
 
 ## Installation
 
