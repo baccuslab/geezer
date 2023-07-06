@@ -1,7 +1,12 @@
 # geezer
 Semi-automated pupil detection and gaze determination
+[1. GUI][#gui_example]
+[2. Usage][#usage]
+
+## GUI Example
 ![geezer_og](img/geezer_og.png)
 
+## Usage
 ### 0. *(optional)* Crop original video to remove irrelevant pixels
 This step will just save time during processing by reducing data on a per-frame basis:
 
