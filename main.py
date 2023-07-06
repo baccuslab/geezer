@@ -327,7 +327,7 @@ class MainWindow(QWidget):
                 self.axis.clear()
                 self.axis.imshow(frame, 'gray', clim=(low, high))
             else:
-                dogs = utilities.dogs(frame, pp, fp)
+                dogs = utils.dogs(frame, pp, fp)
                 if self.view == 1:
                     frame = dogs[0]
                 elif self.view == 2:
@@ -339,7 +339,9 @@ class MainWindow(QWidget):
 
 
                 self.axis.clear()
-                self.axis.imshow(frame, 'gray')
+                low = self.low_clim_slider.value()
+                high = self.high_clim_slider.value()
+                self.axis.imshow(frame, 'gray', clim=(low,high))
             
             if self.coordinate_file is None:
                 if self.pupil_co is not None:
@@ -413,11 +415,11 @@ class MainWindow(QWidget):
     def get_params(self):
         pup_params = []
         for param in self.pup_params:
-            pup_params = int(float(param.text()))
+            pup_params.append(int(float(param.text())))
         
         fid_params = []
         for param in self.fid_params:
-            fid_params = int(float(param.text()))
+            fid_params.append(int(float(param.text())))
         # pup_params = self.pup_params_edit.text()
 
         # fid_params = self.fid_params_edit.text()
