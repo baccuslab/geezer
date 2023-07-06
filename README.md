@@ -1,7 +1,7 @@
-# geezer
 ![geezer_og](assets/logo.png)
+# geezer
 
-** Semi-automated, parallelized pupil detection and gaze determination **
+**Semi-automated, parallelized pupil detection and gaze determination**
      
     
 ### 1. [GUI Screenshots](#gui_example) 
