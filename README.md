@@ -1,5 +1,6 @@
 # geezer
 Semi-automated pupil detection and gaze determination
+![geezer_og](img/geezer_og.png)
 
 ### 0. *(optional)* Crop original video to remove irrelevant pixels
 This step will just save time during processing by reducing data on a per-frame basis:
