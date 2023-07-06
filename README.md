@@ -1,8 +1,7 @@
 # geezer
 Semi-automated pupil detection and gaze determination
-[1. GUI][#gui_example]
-[2. Usage][#usage]
-
+[1. GUI](#gui_example)
+[2. Usage](#usage)
 ## GUI Example
 ![geezer_og](img/geezer_og.png)
 
