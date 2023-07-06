@@ -1,10 +1,12 @@
 # geezer
-Semi-automated pupil detection and gaze determination
+![geezer_og](assets/logo.png)
+
+** Semi-automated, parallelized pupil detection and gaze determination **
      
     
-1. [GUI Screenshots](#gui_example) 
-2. [Installation](#installation)
-3. [Usage](#usage) 
+### 1. [GUI Screenshots](#gui_example) 
+### 2. [Installation](#installation)
+### 3. [Usage](#usage) 
 
 
 ## GUI Example 
