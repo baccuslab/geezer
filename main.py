@@ -1,4 +1,7 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QSlider, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QLineEdit, QMessageBox
+from PyQt5.QtWidgets import QApplication, QWidget, QSlider, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QLineEdit, QMessageBox, QCheckBox, QFrame
+# import a widget that is just a divider line
+from PyQt5.QtGui import QPixmap, QImage
+import numpy as np
 import os
 import threading
 import json
@@ -28,6 +31,9 @@ plt.rcParams['axes.spines.left'] = False
 plt.rcParams['axes.spines.bottom'] = False
 plt.rcParams['axes.spines.top'] = False
 plt.rcParams['axes.spines.right'] = False
+
+DEFAULT_PARAMS = {'pupil': {'exp': 3, 'small': 20, 'large': 50, 'thresh': 200},
+                  'fids': {'exp': 1, 'small': 3, 'large': 11, 'thresh': 65}}
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -59,12 +65,12 @@ class MainWindow(QWidget):
         self.low_clim_slider = QSlider(Qt.Vertical, self)
         self.high_clim_slider = QSlider(Qt.Vertical, self)
 
-        self.open_button = QPushButton('Open', self)
+        self.open_button = QPushButton('Load .mp4 file', self)
         self.crop_button = QPushButton('Crop', self)
         self.load_button = QPushButton('Load coordinates', self)
 
         self.process_button = QPushButton('Process section', self)
-        self.start_end_button = QPushButton('Full video', self)
+        # self.start_end_button = QPushButton('Full video', self)
 
 
         self.frame_slider.valueChanged.connect(self.slider_changed)
@@ -72,72 +78,147 @@ class MainWindow(QWidget):
         self.high_clim_slider.valueChanged.connect(self.clim_changed)
         self.open_button.clicked.connect(self.open_video)
         self.process_button.clicked.connect(self.process_video)
-        self.start_end_button.clicked.connect(self.start_end)
+        # self.start_end_button.clicked.connect(self.start_end)
         self.load_button.clicked.connect(self.load_coordinates)
 
         self.start_frame_process_edit = QLineEdit()
         self.end_frame_process_edit = QLineEdit()
         self.num_processes_edit = QLineEdit()
+        
+        self.pup_params = []
+        self.pup_labels = []
+        self.pup_exp = QLineEdit()
+        self.pup_exp_label = QLabel('Pup (power)')
+        self.pup_params.append(self.pup_exp)
+        self.pup_labels.append(self.pup_exp_label)
 
-        self.pup_params_edit = QLineEdit()
-        self.pup_params_edit.setText('3, 20, 45, 200')  
+        self.pup_min = QLineEdit()
+        self.pup_min_label = QLabel('Pup (small gauss)')
+        self.pup_params.append(self.pup_min)
+        self.pup_labels.append(self.pup_min_label)
 
-        self.fid_params_edit = QLineEdit()
-        self.fid_params_edit.setText('1, 2, 11, 50')
+        self.pup_max = QLineEdit()
+        self.pup_max_label = QLabel('Pup (large gauss)')
+        self.pup_params.append(self.pup_max)
+        self.pup_labels.append(self.pup_max_label)
+
+        self.pup_thresh = QLineEdit()
+        self.pup_thresh_label = QLabel('Pup (binary thresh)')
+        self.pup_params.append(self.pup_thresh)
+        self.pup_labels.append(self.pup_thresh_label)
+
+        self.fid_params = []
+        self.fid_labels = []
+        self.fid_exp = QLineEdit()
+        self.fid_exp_label = QLabel('LED (power)') 
+        self.fid_params.append(self.fid_exp)
+        self.fid_labels.append(self.fid_exp_label)
+
+        self.fid_min = QLineEdit()
+        self.fid_min_label = QLabel('LED (small gauss)')
+        self.fid_params.append(self.fid_min)
+        self.fid_labels.append(self.fid_min_label)
+
+        self.fid_max = QLineEdit()
+        self.fid_max_label = QLabel('LED (large gauss)')
+        self.fid_params.append(self.fid_max)
+        self.fid_labels.append(self.fid_max_label)
+
+        self.fid_thresh = QLineEdit()
+        self.fid_thresh_label = QLabel('LED (binary thresh)')
+        self.fid_params.append(self.fid_thresh)
+        self.fid_labels.append(self.fid_thresh_label)
 
         self.crop_button.clicked.connect(self.crop_video)
 
-        self.set_pupil_co_button = QPushButton('Set Pupil Coords', self)
-        self.set_pupil_co_button.clicked.connect(self.set_pupil_co)
+            
+        self.start_frame_process_edit.setPlaceholderText('0')
+        self.end_frame_process_edit.setPlaceholderText('100')
+        self.num_processes_edit.setPlaceholderText('4')
 
-        self.add_fid_co_button = QPushButton('Add Fid Coords', self)
-        self.add_fid_co_button.clicked.connect(self.add_fid_co)
-
-        self.start_frame_process_edit.setPlaceholderText('Start frame')
-        self.end_frame_process_edit.setPlaceholderText('End frame')
-        self.num_processes_edit.setPlaceholderText('Number of processes')
+        self.start_frame_label = QLabel('Start frame')
+        self.end_frame_label = QLabel('End frame')
+        self.num_processes_label = QLabel('Number of processes')
 
         self.low_clim_slider.setRange(0, 255)
         self.high_clim_slider.setRange(0, 255)
         self.low_clim_slider.setValue(0)
         self.high_clim_slider.setValue(255)
 
-        self.select_layout = QHBoxLayout()
-        self.select_layout.addWidget(self.set_pupil_co_button)
-        self.select_layout.addWidget(self.add_fid_co_button)
-
         self.image_layout = QHBoxLayout()
-        self.image_layout.addWidget(self.low_clim_slider)
         self.image_layout.addWidget(self.canvas)
+        self.image_layout.addWidget(self.low_clim_slider)
         self.image_layout.addWidget(self.high_clim_slider)
 
         self.process_layout = QHBoxLayout()
+        self.process_layout.addWidget(self.start_frame_label)
         self.process_layout.addWidget(self.start_frame_process_edit)
+        self.process_layout.addWidget(self.num_processes_label)
         self.process_layout.addWidget(self.num_processes_edit)
+        self.process_layout.addWidget(self.end_frame_label)
         self.process_layout.addWidget(self.end_frame_process_edit)
 
-        self.params_layout = QHBoxLayout()
-        self.params_layout.addWidget(self.pup_params_edit)
-        self.params_layout.addWidget(self.fid_params_edit)
+        self.all_frames_checkbox = QCheckBox('All frames')
+        self.all_frames_checkbox.setChecked(True)
+        self.all_frames_checkbox.stateChanged.connect(self.select_all_frames)
+
+        self.process_layout.addWidget(self.all_frames_checkbox)
+
+        self.pup_params_layout = QHBoxLayout()
+        for label, param in zip(self.pup_labels,self.pup_params):
+            self.pup_params_layout.addWidget(label)
+            self.pup_params_layout.addWidget(param)
+
+        self.fid_params_layout = QHBoxLayout()
+        for label, param in zip(self.fid_labels,self.fid_params):
+            self.fid_params_layout.addWidget(label)
+            self.fid_params_layout.addWidget(param)
 
         self.frame_nav_layout = QHBoxLayout()
-        self.frame_nav_layout.addWidget(self.frame_enter)
         self.frame_nav_layout.addWidget(self.frame_slider)
+        self.frame_nav_layout.setStretch(0, 1)
+        self.frame_nav_layout.addWidget(self.frame_enter)
         
         layout = QVBoxLayout(self)
+        
+        box = QHBoxLayout()
+        box.addWidget(self.open_button)
+        box.addWidget(self.crop_button)
 
-        layout.addLayout(self.params_layout)
-        layout.addLayout(self.select_layout)
+        layout.addLayout(box)
+
+        layout.addLayout(self.pup_params_layout)
+        layout.addLayout(self.fid_params_layout)
         layout.addLayout(self.image_layout)
 
-        layout.addWidget(self.open_button)
-        layout.addWidget(self.crop_button)
         layout.addLayout(self.frame_nav_layout)
-        layout.addWidget(self.process_button)
-        layout.addWidget(self.start_end_button)
         layout.addLayout(self.process_layout)
+
+        layout.addWidget(self.process_button)
+        # layout.addWidget(self.start_end_button)
+        # Add a divider line
+        self.divider_line = QFrame()
+        self.divider_line.setFrameShape(QFrame.HLine)
+        self.divider_line.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(self.divider_line)
+
         layout.addWidget(self.load_button)
         self.setLayout(layout)
+
+        self.load_params(DEFAULT_PARAMS)
+    
+    def load_params(self, params):
+        self.pup_exp.setText(str(params['pupil']['exp']))
+        self.pup_min.setText(str(params['pupil']['small']))
+        self.pup_max.setText(str(params['pupil']['large']))
+        self.pup_thresh.setText(str(params['pupil']['thresh']))
+
+        self.fid_exp.setText(str(params['fids']['exp']))
+        self.fid_min.setText(str(params['fids']['small']))
+        self.fid_max.setText(str(params['fids']['large']))
+        self.fid_thresh.setText(str(params['fids']['thresh']))
+
+
 
     def crop_video(self):
 
@@ -329,20 +410,34 @@ class MainWindow(QWidget):
         self.update_frame()
 
     def get_params(self):
-        pup_params = self.pup_params_edit.text()
-        fid_params = self.fid_params_edit.text()
-        pup_params = pup_params.split(',')
-        fid_params = fid_params.split(',')
+        pup_params = []
+        for param in self.pup_params:
+            pup_params = int(float(param.text()))
+        
+        fid_params = []
+        for param in self.fid_params:
+            fid_params = int(float(param.text()))
+        # pup_params = self.pup_params_edit.text()
 
-        pup_params = [int(float(x)) for x in pup_params]
-        fid_params = [int(float(x)) for x in fid_params]
+        # fid_params = self.fid_params_edit.text()
+        # pup_params = pup_params.split(',')
+        # fid_params = fid_params.split(',')
+
+        # pup_params = [int(float(x)) for x in pup_params]
+        # fid_params = [int(float(x)) for x in fid_params]
 
         return pup_params, fid_params
     
-    def start_end(self):
-        self.start_frame_process_edit.setText('0')
-        self.end_frame_process_edit.setText(str(self.frame_count - 1))
-        self.show()
+    def select_all_frames(self):
+        all_frames = self.all_frames_checkbox.isChecked()
+
+        if all_frames:
+            self.start_frame_process_edit.setText('0')
+            self.end_frame_process_edit.setText(str(self.frame_count - 1))
+            self.show()
+        else:
+            pass
+
 
     def process_video(self):
 
