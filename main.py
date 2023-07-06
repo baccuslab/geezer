@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QApplication, QWidget, QSlider, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QLineEdit, QMessageBox, QCheckBox, QFrame
-# import a widget that is just a divider line
+from PyQt5.QtGui import QIcon
 from PyQt5.QtGui import QPixmap, QImage
 import numpy as np
 import os
@@ -18,8 +18,8 @@ from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utilities import process_frame
-import utilities
+from utils import process_frame
+import utils 
 
 # rcParams: set default so that axis isn't shown and no x or yticks
 plt.rcParams['axes.axisbelow'] = False
@@ -38,6 +38,9 @@ DEFAULT_PARAMS = {'pupil': {'exp': 3, 'small': 20, 'large': 50, 'thresh': 200},
 class MainWindow(QWidget):
     def __init__(self):
         super(MainWindow, self).__init__()
+        # set icon
+        self.setWindowIcon(QIcon('logo.png'))
+
         self.video = None
         self.frame_count = 0
         self.current_frame = 0
@@ -70,8 +73,6 @@ class MainWindow(QWidget):
         self.load_button = QPushButton('Load coordinates', self)
 
         self.process_button = QPushButton('Process section', self)
-        # self.start_end_button = QPushButton('Full video', self)
-
 
         self.frame_slider.valueChanged.connect(self.slider_changed)
         self.low_clim_slider.valueChanged.connect(self.clim_changed)
