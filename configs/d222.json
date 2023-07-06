@@ -1,0 +1,53 @@
+[
+    {
+        "component": "monitor",
+        "placement": "left",
+        "left_co": [21.1,21.1],
+        "right_co": [21.1, 0],
+        "z_range": [12, 24.1]
+    },
+   {
+        "component": "monitor",
+        "placement": "center",
+        "left_co": [21.1, 0],
+        "right_co": [0,0],
+        "z_range": [12, 24.1]
+    },
+    {
+        "component": "monitor",
+        "placement": "right",
+        "left_co": [0,0],
+        "right_co": [0,21.1],
+        "z_range": [12, 24.1]
+    },
+    {
+        "component": "led",
+        "placement": "sw",
+        "co": [21.1,15.6,12]
+        
+    },
+    {
+        "component": "led",
+        "placement": "ne",
+        "co": [20.1,1.5,26.6]
+    },
+    {
+        "component": "led",
+        "placement": "se",
+        "co": [20.1,0.5,9]
+    },
+    {
+        "component": "led",
+        "placement": "nw",
+        "co": [21.1,18.1,26.3]
+    },
+    {
+        "component": "eye",
+        "co":[10.55,11,14.5]
+    },
+    {
+        "component": "camera",
+        "co":[22.6,6.75,27.5]
+    }
+
+]
