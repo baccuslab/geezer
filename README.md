@@ -13,6 +13,11 @@
 ![geezer_og](assets/geezer_og.png)
 
 ## Installation
+### 0. Windows specific installation instructions
+This program requires Qt and X11 forwarding, which is available on Linux systems but incorporating on Windows with WSL can be tricky. 
+
+To do so, our recommendation is to download MobaXterm (https://mobaxterm.mobatek.net/) which has not only remote computing abilities,
+but also X11-forwarding capability that other programssuch as VS Code might not have built in.
 
 ## Usage
 ### 0. *(optional)* Crop original video to remove irrelevant pixels
