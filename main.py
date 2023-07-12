@@ -45,6 +45,12 @@ class MainWindow(QWidget):
         self.frame_count = 0
         self.current_frame = 0
         self.view=0
+        self.elevation = None
+        self.azimuth = None
+        self.line2 = None
+        self.line3 = None
+        self.marker2 = None
+        self.marker3 = None
         
         self.pupil_co = None
         self.fids_co = []
@@ -57,6 +63,16 @@ class MainWindow(QWidget):
         self.axis = self.figure.add_subplot(111)
         self.canvas = FigureCanvas(self.figure)
         self.canvas.mpl_connect('button_press_event', self.onclick)
+
+        self.figure2 = Figure(tight_layout=True)
+        self.axis2 = self.figure2.add_subplot(111)
+        self.canvas2 = FigureCanvas(self.figure2)
+        self.canvas2.mpl_connect('button_press_event', self.onclick)
+
+        self.figure3 = Figure(tight_layout=True)
+        self.axis3 = self.figure3.add_subplot(111)
+        self.canvas3 = FigureCanvas(self.figure3)
+        self.canvas3.mpl_connect('button_press_event', self.onclick)
 
         self.frame_slider = QSlider(Qt.Horizontal, self)
         self.frame_enter = QLineEdit()
@@ -74,12 +90,18 @@ class MainWindow(QWidget):
 
         self.process_button = QPushButton('Process section', self)
         #self.plot_deg_button('Plot azimuth and elevation',self)#new
+        self.load_pupil_button = QPushButton('Load pupil coordinates', self)
+        self.plot_az_button = QPushButton('Plot azimuth and elevation', self)
+        #self.plot_elev_button = QPushButton('Plot elevation', self)
 
         self.frame_slider.valueChanged.connect(self.slider_changed)
         self.low_clim_slider.valueChanged.connect(self.clim_changed)
         self.high_clim_slider.valueChanged.connect(self.clim_changed)
         self.open_button.clicked.connect(self.open_video)
         self.process_button.clicked.connect(self.process_video)
+        self.load_pupil_button.clicked.connect(self.load_pupil_coordinates)
+        self.plot_az_button.clicked.connect(self.plot_both)
+        #self.plot_elev_button.clicked.connect(self.plot_elevation)
         #self.plot_deg_button.clicked.connect(self.plot_deg_button)#new
 
         # self.start_end_button.clicked.connect(self.start_end)
@@ -154,6 +176,37 @@ class MainWindow(QWidget):
         self.image_layout.addWidget(self.low_clim_slider)
         self.image_layout.addWidget(self.high_clim_slider)
 
+        self.plot_az_layout = QHBoxLayout()
+        self.plot_az_layout.addWidget(self.canvas2)
+        #self.plot_az_layout.addWidget(self.plot_az_button)
+        #self.plot_az_layout.addWidget(self.low_clim_slider)
+        #self.plot_az_layout.addWidget(self.high_clim_slider)
+
+        self.plot_elev_layout = QHBoxLayout()
+        self.plot_elev_layout.addWidget(self.canvas3)
+
+        self.plot_buttons_layout = QHBoxLayout()
+        self.plot_buttons_layout.addWidget(self.load_pupil_button)
+        #self.plot_buttons_layout.addWidget(self.plot_elev_button)
+        self.plot_buttons_layout.addWidget(self.plot_az_button)
+        #self.plot_elev_layout.addWidget(self.low_clim_slider)
+        #self.plot_elev_layout.addWidget(self.high_clim_slider)
+        
+        self.plot_total = QHBoxLayout()
+        self.plot_total.addLayout(self.plot_az_layout)
+        self.plot_total.addLayout(self.plot_elev_layout)
+
+        self.buttons_and_plot = QVBoxLayout()
+        self.buttons_and_plot.addLayout(self.plot_total)
+        self.buttons_and_plot.addLayout(self.plot_buttons_layout)
+
+        self.mp4_and_plot_layout = QHBoxLayout()
+        self.mp4_and_plot_layout.addLayout(self.image_layout)
+        self.mp4_and_plot_layout.addLayout(self.buttons_and_plot)
+        #self.mp4_and_plot_layout.addLayout(self.plot_az_layout)
+        #self.mp4_and_plot_layout.addLayout(self.plot_elev_layout)
+        #self.mp4_and_plot_layout.addLayout(self.plot_buttons_layout)
+
         self.process_layout = QHBoxLayout()
         self.process_layout.addWidget(self.start_frame_label)
         self.process_layout.addWidget(self.start_frame_process_edit)
@@ -193,7 +246,7 @@ class MainWindow(QWidget):
 
         layout.addLayout(self.pup_params_layout)
         layout.addLayout(self.fid_params_layout)
-        layout.addLayout(self.image_layout)
+        layout.addLayout(self.mp4_and_plot_layout)#image_layout)
 
         layout.addLayout(self.frame_nav_layout)
         layout.addLayout(self.process_layout)
@@ -302,6 +355,8 @@ class MainWindow(QWidget):
         else:
             self.current_frame = self.frame_slider.value()
         self.update_frame()
+        self.plot_azimuth()
+        self.plot_elevation()
 
     def clim_changed(self):
         self.update_frame()
@@ -342,6 +397,7 @@ class MainWindow(QWidget):
 
 
                 self.axis.clear()
+                #new
                 low = self.low_clim_slider.value()
                 high = self.high_clim_slider.value()
                 self.axis.imshow(frame, 'gray', clim=(low,high))
@@ -444,7 +500,45 @@ class MainWindow(QWidget):
             self.show()
         else:
             pass
+    
+    def load_pupil_coordinates(self):
+        #file_dialog = QFileDialog()
+        #file_path, _ = file_dialog.getOpenFileName(self, 'Load Pupil Coordinates File', '', 'HDF5 Files (*.h5)')
+        #if file_path:
+        #    self.pupil_path = file_path
+        self.load_coordinates()
+        z = np.argsort(self.coordinates['frame_idxs'][:])
+        self.azimuth = self.coordinates['pup_co'][:, 0][z]
+        self.elevation = self.coordinates['pup_co'][:, 1][z]
 
+    def plot_azimuth(self):
+        self.axis2.clear()
+        self.axis2.set_ylabel('Azimuth')
+        self.axis2.set_xlabel('Time')
+        self.line2, = self.axis2.plot(np.arange(len(self.azimuth)), self.azimuth, color='blue', label='Azimuth',zorder=1)
+        if self.current_frame >= len(self.azimuth):
+            self.current_frame = len(self.azimuth)
+        self.marker2 = self.axis2.plot(self.current_frame, self.azimuth[self.current_frame], c='r', marker='o', label='Pupil Marker',zorder=2) #self.axis2.scatter(self.current_frame, self.azimuth[0], c='r', marker='o', label='Pupil Marker',zorder=2)
+        self.axis2.legend()
+        self.canvas2.draw()
+        return
+
+    def plot_elevation(self):
+        self.axis3.clear()
+        self.axis3.set_xlabel('Time')
+        self.axis3.set_ylabel('Elevation')
+        self.line3, = self.axis3.plot(np.arange(len(self.elevation)), self.elevation, color='blue', label='Elevation',zorder=1)
+        if self.current_frame >= len(self.elevation):
+            self.current_frame = len(self.elevation)
+        self.marker3 = self.axis3.plot(self.current_frame, self.elevation[self.current_frame], c='r', marker='o', label='Pupil Marker',zorder=2) #self.axis3.scatter(self.current_frame, self.elevation[0], c='r', marker='o', label='Pupil Marker',zorder=2)
+        self.axis3.legend()
+        self.canvas3.draw()
+        return
+
+    def plot_both(self):
+        self.plot_azimuth()
+        self.plot_elevation()
+        return
 
     def process_video(self):
 
@@ -557,128 +651,184 @@ class MainWindow(QWidget):
         _video.release()
 
 
-import h5py
-import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton, QFileDialog
-from PyQt5.QtCore import Qt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
+# import sys
+# import cv2
+# import numpy as np
+# import h5py
+# from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QPushButton, QSlider, QFileDialog
+# from PyQt5.QtGui import QImage, QPixmap
+# from PyQt5.QtCore import Qt, QSize
+# import matplotlib.pyplot as plt
+# from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+# from matplotlib.figure import Figure
+# from matplotlib.animation import FuncAnimation
 
-class PupilCoordinatesPlot(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle('Pupil Coordinates Plot')
-        self.setGeometry(100, 100, 800, 600)
+# class PupilTracker(QMainWindow):
+#     def __init__(self):
+#         super().__init__()
+#         self.setWindowTitle('Pupil Tracker')
+#         self.setGeometry(100, 100, 1200, 800)
 
-        self.figure = Figure()
-        self.canvas = FigureCanvas(self.figure)
-        self.ax = self.figure.add_subplot(111)
-        self.line = None
+#         self.video_path = None
+#         self.frame_rate = None
+#         self.frame_count = None
+#         self.current_frame = 0
 
-        self.azimuth = None
-        self.elevation = None
+#         self.fiducials_path = None
+#         self.pupil_path = None
 
-        self.setup_ui()
+#         self.azimuth = None
+#         self.elevation = None
 
-    def setup_ui(self):
-        widget = QWidget(self)
-        layout = QVBoxLayout(widget)
+#         self.fig = Figure()
+#         self.canvas = FigureCanvas(self.fig)
+#         self.ax1 = self.fig.add_subplot(211)
+#         self.ax2 = self.fig.add_subplot(212, sharex=self.ax1)
+#         self.line1 = None
+#         self.line2 = None
+#         self.marker1 = None
+#         self.marker2 = None
 
-        load_button = QPushButton('Load File')
-        load_button.clicked.connect(self.load_file)
-        layout.addWidget(load_button)
+#         self.video_label = QLabel(self)
+#         self.slider = QSlider(Qt.Horizontal, self)
 
-        plot_button = QPushButton('Open Plot Window')
-        plot_button.clicked.connect(self.open_plot_window)
-        layout.addWidget(plot_button)
+#         self.setup_ui()
 
-        layout.addWidget(self.canvas)
-        self.setCentralWidget(widget)
+#     def setup_ui(self):
+#         widget = QWidget(self)
+#         layout = QVBoxLayout(widget)
 
-    def load_file(self):
-        file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(self, 'Load H5 File', '', 'H5 Files (*.h5)')
-        if file_path:
-            self.load_coordinates(file_path)
-            self.plot_pupil_coordinates()
+#         load_video_button = QPushButton('Load Video')
+#         load_video_button.clicked.connect(self.load_video)
+#         layout.addWidget(load_video_button)
 
-    def load_coordinates(self, file_path):
-        with h5py.File(file_path, 'r') as h5_file:
-            coordinates = h5_file['pup_co'][:]
+#         load_fiducials_button = QPushButton('Load Fiducials')
+#         load_fiducials_button.clicked.connect(self.load_fiducials)
+#         layout.addWidget(load_fiducials_button)
 
-        self.azimuth = coordinates[:, 0]
-        self.elevation = coordinates[:, 1]
+#         load_pupil_button = QPushButton('Load Pupil Coordinates')
+#         load_pupil_button.clicked.connect(self.load_pupil_coordinates)
+#         layout.addWidget(load_pupil_button)
 
-    def plot_pupil_coordinates(self):
-        self.ax.clear()
-        self.ax.set_xlabel('Time')
-        self.ax.set_ylabel('Coordinate')
-        self.line, = self.ax.plot(self.azimuth, label='Azimuth')
-        self.ax.plot(self.elevation, label='Elevation')
-        self.ax.legend()
-        self.canvas.draw()
+#         layout.addWidget(self.video_label)
 
-    def on_pick(self, event):
-        ind = event.ind[0]
-        self.ax.set_title(f'Highlighted Point: ({self.azimuth[ind]}, {self.elevation[ind]})')
-        self.line.set_xdata(ind)
-        self.line.set_ydata(self.azimuth[ind])
-        self.canvas.draw()
+#         self.slider.setMinimum(0)
+#         self.slider.setMaximum(0)
+#         self.slider.valueChanged.connect(self.slider_value_changed)
+#         layout.addWidget(self.slider)
 
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Escape:
-            self.close()
+#         layout.addWidget(self.canvas)
+#         self.setCentralWidget(widget)
 
-    def show(self):
-        super().show()
+#     def load_video(self):
+#         file_dialog = QFileDialog()
+#         file_path, _ = file_dialog.getOpenFileName(self, 'Load Video File', '', 'MP4 Files (*.mp4)')
+#         if file_path:
+#             self.video_path = file_path
+#             self.get_video_properties()
+#             self.load_frame(0)
 
-    def open_plot_window(self):
-        plot_window = PlotWindow(self.azimuth, self.elevation)
-        plot_window.show()
+#     def get_video_properties(self):
+#         cap = cv2.VideoCapture(self.video_path)
+#         self.frame_rate = cap.get(cv2.CAP_PROP_FPS)
+#         self.frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+#         cap.release()
+#         self.slider.setMinimum(0)
+#         self.slider.setMaximum(self.frame_count - 1)
 
-class PlotWindow(QMainWindow):
-    def __init__(self, azimuth, elevation):
-        super().__init__()
-        self.setWindowTitle('Pupil Coordinates Plot')
-        self.setGeometry(100, 100, 800, 600)
+#     def load_frame(self, frame_number):
+#         cap = cv2.VideoCapture(self.video_path)
+#         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+#         ret, frame = cap.read()
+#         cap.release()
+#         if ret:
+#             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#             height, width, channel = frame.shape
+#             bytes_per_line = channel * width
+#             q_image = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
+#             pixmap = QPixmap.fromImage(q_image)
+#             self.video_label.setPixmap(pixmap.scaledToWidth(self.video_label.width()))
 
-        self.figure = Figure()
-        self.canvas = FigureCanvas(self.figure)
-        self.ax = self.figure.add_subplot(111)
-        self.line = None
+#     def load_fiducials(self):
+#         file_dialog = QFileDialog()
+#         file_path, _ = file_dialog.getOpenFileName(self, 'Load Fiducials File', '', 'HDF5 Files (*.h5)')
+#         if file_path:
+#             self.fiducials_path = file_path
+#             self.load_coordinates()
 
-        self.azimuth = azimuth
-        self.elevation = elevation
+#     def load_pupil_coordinates(self):
+#         file_dialog = QFileDialog()
+#         file_path, _ = file_dialog.getOpenFileName(self, 'Load Pupil Coordinates File', '', 'HDF5 Files (*.h5)')
+#         if file_path:
+#             self.pupil_path = file_path
+#             self.load_coordinates()
 
-        self.plot_pupil_coordinates()
+#     def load_coordinates(self):
+#         if self.fiducials_path is None or self.pupil_path is None:
+#             return
 
-    def plot_pupil_coordinates(self):
-        self.ax.clear()
-        self.ax.set_xlabel('Time')
-        self.ax.set_ylabel('Coordinate')
-        self.line, = self.ax.plot(self.azimuth, label='Azimuth')
-        self.ax.plot(self.elevation, label='Elevation')
-        self.ax.legend()
-        self.canvas.draw()
+#         with h5py.File(self.fiducials_path, 'r') as h5_file:
+#             fiducials = h5_file['fids_co']
+#             z = np.argsort(h5_file['frame_idxs'][:])
 
-    def on_pick(self, event):
-        ind = event.ind[0]
-        self.ax.set_title(f'Highlighted Point: ({self.azimuth[ind]}, {self.elevation[ind]})')
-        self.line.set_xdata(ind)
-        self.line.set_ydata(self.azimuth[ind])
-        self.canvas.draw()
+#         with h5py.File(self.pupil_path, 'r') as h5_file:
+#             coordinates = h5_file['pup_co']
+#             z = np.argsort(h5_file['frame_idxs'][:])
+        
+#         self.azimuth = coordinates[:, 0][z]
+#         self.elevation = coordinates[:, 1][z]
 
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Escape:
-            self.close()
+#         self.ax1.clear()
+#         self.ax1.set_ylabel('Azimuth')
+#         self.ax2.clear()
+#         self.ax2.set_xlabel('Time')
+#         self.ax2.set_ylabel('Elevation')
+#         self.line1, = self.ax1.plot(np.arange(len(self.azimuth)), self.azimuth, color='blue', label='Azimuth')
+#         self.line2, = self.ax2.plot(np.arange(len(self.elevation)), self.elevation, color='green', label='Elevation')
+#         self.marker1 = self.ax1.scatter(0, self.azimuth[0], c='r', marker='o', label='Pupil Marker')
+#         self.marker2 = self.ax2.scatter(0, self.elevation[0], c='r', marker='o', label='Pupil Marker')
+#         self.ax1.legend()
+#         self.ax2.legend()
+#         self.canvas.draw()
+
+#     def slider_value_changed(self, value):
+#         self.current_frame = value
+#         self.load_frame(value)
+#         self.update_coordinates(value)
+
+#     def update_coordinates(self, frame):
+#         self.marker1.set_offsets(np.array([[frame, self.azimuth[frame]]]))
+#         self.marker2.set_offsets(np.array([[frame, self.elevation[frame]]]))
+#         self.canvas.draw()
+
+#     def resizeEvent(self, event):
+#         self.update_plot_layout()
+#         self.update_video_label_size()
+#         super().resizeEvent(event)
+
+#     def update_plot_layout(self):
+#         self.fig.tight_layout()
+
+#     def update_video_label_size(self):
+#         pixmap = self.video_label.pixmap()
+#         if pixmap is not None:
+#             scaled_pixmap = pixmap.scaled(self.video_label.size(), Qt.AspectRatioMode.KeepAspectRatio)
+#             self.video_label.setPixmap(scaled_pixmap)
+
+#     def keyPressEvent(self, event):
+#         if event.key() == Qt.Key_Escape:
+#             self.close()
+
+#     def show(self):
+#         super().show()
+
 
 if __name__ == "__main__":
     app = QApplication([])
     window = MainWindow()
-    app2 = QApplication(sys.argv)
-    window2 = PupilCoordinatesPlot()
-    window2.show()
+    # app2 = QApplication(sys.argv)
+    # window2 = PupilTracker()
+    # window2.show()
     window.show()
     app.exec_()
-    sys.exit(app2.exec_())
-
+    # sys.exit(app2.exec_())
