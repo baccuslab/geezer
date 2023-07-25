@@ -17,7 +17,7 @@ import cv2
 from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
-
+import coltrane #new
 from utils import process_frame
 import utils 
 
@@ -51,7 +51,12 @@ class MainWindow(QWidget):
         self.line3 = None
         self.marker2 = None
         self.marker3 = None
-        
+        self.frame_start = None
+        self.frame_end = None
+
+        self.json_file = '/home/yfaragal/geezer/configs/d222_calibration_jbm109.json' #new
+
+
         self.pupil_co = None
         self.fids_co = []
         
@@ -318,6 +323,8 @@ class MainWindow(QWidget):
             self.coordinates['fiducials'] = {}
             for i in range(num_fids):
                 self.coordinates['fiducials'][i] = fids[fid_keys[i]][:]
+            self.frame_start = int(str(np.array(f['meta']['start_frame'])))
+            self.frame_end = int(str(np.array(f['meta']['end_frame'])))
 
 
     def open_video(self):
@@ -511,14 +518,120 @@ class MainWindow(QWidget):
         self.azimuth = self.coordinates['pup_co'][:, 0][z]
         self.elevation = self.coordinates['pup_co'][:, 1][z]
 
+    def gen_angles(self):
+        leds = ['cam','ne','nw','se','sw']
+        self.load_coordinates()
+        geezr_path = self.json_file
+        z = np.argsort(self.coordinates['frame_idxs'][:])
+        frame_idxs = self.coordinates['frame_idxs'][:]  
+        frame_idxs = frame_idxs[z]
+        led_co = {}
+        pup_co = self.coordinates['pup_co'][:][z]
+        for i in range(len(self.coordinates['fiducials'])):
+            fids = self.coordinates['fiducials'][i]
+            led_co[leds[i]] = fids[:][z]
+        coordinates = coltrane.load_measurements(geezr_path)
+        centered = coltrane.center_coordinates(coordinates)
+        basis = coltrane.get_basis(centered)
+        cam_preds = {}
+        for l in ['ne','nw','se','sw']:
+            dxdy = led_co['cam']-led_co[l]
+            dxdy = np.mean(dxdy,axis=0)
+            cam_preds[l] = dxdy
+        def euclidean_distance(x1, x2):
+    # x1 and x2 are a n by 2 arrays 
+            return np.sqrt(np.sum((x1-x2)**2, axis=1))
+        def nan_helper(y):
+            return np.isnan(y), lambda z: z.nonzero()[0]
+        leds = ['ne','se','sw','nw']
+        thetas = {}
+        phis = {}
+        for led in leds:
+            el, az =  coltrane.get_led_angle(centered[led], basis)
+            thetas[led] =[] 
+            phis[led] =[] 
+            num_frames = frame_idxs.shape[0]
+            frames_adjusted = frame_idxs-self.frame_start
+            for frame in tqdm.tqdm(frames_adjusted):
+                #idx = frame_idxs[frame]
+                led_pix = led_co[led][frame]
+                pup_pix = pup_co[frame]
+                cam_pix = led_co[led][frame] + cam_preds[led]
+                cam_pix[1] -= 10
+
+                e,a = coltrane.calc_gaze_angle(pup_pix, led_pix, cam_pix, [el, az])
+                t,p = coltrane.ray_trace(centered, a, e) 
+                thetas[led].append(np.pi/2 - t)
+                phis[led].append(p)
+        thetas[led] = np.array(thetas[led])
+        phis[led] = np.array(phis[led])
+        e = euclidean_distance(led_co['ne'],led_co['sw'])
+        e = np.abs(e - e[0])
+        e = e >50 
+        ee = euclidean_distance(led_co['se'],led_co['nw'])
+        ee = np.abs(ee - ee[0])
+        ee = ee >50 
+        cleaned_up_phis = {}
+        cleaned_up_thetas = {}
+        for led in ['se','sw', 'ne', 'nw']:
+            sw = phis[led] 
+            sw = np.rad2deg(sw)
+            #sw = sw - sw[20000]
+            sw[e] = np.nan
+            sw[ee] = np.nan
+            sw[e] = np.nan
+            sw[ee] = np.nan
+            nans, x = nan_helper(sw)
+            if len(nans) == 0:
+                cleaned_up_phis[led] = sw
+                sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
+                w = np.abs(np.diff(sw)) > 1 
+                sw[1:][w] = np.nan
+                sw[sw > 20] = np.nan
+                sw[sw < -20] = np.nan
+                nans, x = nan_helper(sw)
+                if len(nans) == 0:
+                    cleaned_up_phis[led] = sw
+                else:
+                    sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
+                    cleaned_up_phis[led] = sw
+            sw = thetas[led] 
+            sw = np.rad2deg(sw)
+            #sw = sw - sw[20000]
+            sw[e] = np.nan
+            sw[ee] = np.nan
+            sw[e] = np.nan
+            sw[ee] = np.nan
+            nans, x = nan_helper(sw)
+            if len(nans) == 0:
+                cleaned_up_phis[led] = sw
+            else:
+                sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
+                w = np.abs(np.diff(sw)) > 1 
+                sw[1:][w] = np.nan
+                sw[sw > 5] = np.nan
+                sw[sw < -5] = np.nan
+                nans, x = nan_helper(sw)
+                if len(nans) == 0:
+                    cleaned_up_phis[led] = sw
+                else:
+                    sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
+                    cleaned_up_phis[led] = sw
+        self.azimuth = cleaned_up_phis['sw']
+        self.elevation = cleaned_up_thetas['sw']
+        return
+
     def plot_azimuth(self):
         self.axis2.clear()
         self.axis2.set_ylabel('Azimuth')
         self.axis2.set_xlabel('Time')
-        self.line2, = self.axis2.plot(np.arange(len(self.azimuth)), self.azimuth, color='blue', label='Azimuth',zorder=1)
-        if self.current_frame >= len(self.azimuth):
-            self.current_frame = len(self.azimuth)
-        self.marker2 = self.axis2.plot(self.current_frame, self.azimuth[self.current_frame], c='r', marker='o', label='Pupil Marker',zorder=2) #self.axis2.scatter(self.current_frame, self.azimuth[0], c='r', marker='o', label='Pupil Marker',zorder=2)
+        time = np.arange(len(self.azimuth))
+        self.line2, = self.axis2.plot(time, self.azimuth, color='blue', label='Azimuth',zorder=1)
+        if self.current_frame >= self.frame_end:
+            self.current_frame = self.frame_end
+        if self.current_frame <= self.frame_start:
+            self.current_frame = self.frame_start
+        self.marker2 = self.axis2.plot(self.current_frame-self.frame_start, self.azimuth[self.current_frame-self.frame_start], c='r', marker='o', label='Pupil Marker',zorder=2) #self.axis2.scatter(self.current_frame, self.azimuth[0], c='r', marker='o', label='Pupil Marker',zorder=2)
         self.axis2.legend()
         self.canvas2.draw()
         return
@@ -527,15 +640,20 @@ class MainWindow(QWidget):
         self.axis3.clear()
         self.axis3.set_xlabel('Time')
         self.axis3.set_ylabel('Elevation')
-        self.line3, = self.axis3.plot(np.arange(len(self.elevation)), self.elevation, color='blue', label='Elevation',zorder=1)
-        if self.current_frame >= len(self.elevation):
-            self.current_frame = len(self.elevation)
-        self.marker3 = self.axis3.plot(self.current_frame, self.elevation[self.current_frame], c='r', marker='o', label='Pupil Marker',zorder=2) #self.axis3.scatter(self.current_frame, self.elevation[0], c='r', marker='o', label='Pupil Marker',zorder=2)
+        time = np.arange(len(self.azimuth))
+        self.line3, = self.axis3.plot(time, self.elevation, color='blue', label='Elevation',zorder=1)
+        if self.current_frame >= self.frame_end:
+            self.current_frame = self.frame_end
+        if self.current_frame <= self.frame_start:
+            self.current_frame = self.frame_start
+        self.marker3 = self.axis3.plot(self.current_frame-self.frame_start, self.elevation[self.current_frame-self.frame_start], c='r', marker='o', label='Pupil Marker',zorder=2) #self.axis3.scatter(self.current_frame, self.elevation[0], c='r', marker='o', label='Pupil Marker',zorder=2)
         self.axis3.legend()
         self.canvas3.draw()
         return
 
     def plot_both(self):
+        self.frame_enter.setText(str(self.frame_start))
+        self.gen_angles()
         self.plot_azimuth()
         self.plot_elevation()
         return
@@ -551,8 +669,11 @@ class MainWindow(QWidget):
 
         _video = cv2.VideoCapture(self.mp4_filename)
         meta = {} 
-        start_frame = int(self.start_frame_process_edit.text())
+        start_frame = np.array(self.start_frame_process_edit.text(),dtype='int64')
+        print(start_frame)
         meta['start_frame'] = start_frame
+        print('start frame dtype:' + str(meta['start_frame'].dtype))
+        start_frame = int(start_frame)
         self.current_frame = start_frame
         self.frame_slider.setValue(start_frame)
         
@@ -560,8 +681,10 @@ class MainWindow(QWidget):
         ret, frame = _video.read()
 
         proc_pup_params, proc_fid_params = self.get_params() 
-        meta['pup_params'] = proc_pup_params
-        meta['fid_params'] = proc_fid_params
+        meta['pup_params'] = np.array(proc_pup_params,dtype='int64')
+        print('pup params dtype:' + str(meta['pup_params'].dtype))
+        meta['fid_params'] = np.array(proc_fid_params,dtype='int64')
+        print('fid params dtype:' + str(meta['fid_params'].dtype))
         # p,f = process_frame(frame, self.pupil_co, self.fids_co, proc_pup_params, proc_fid_params)
         # print(p)
         # print(f)
@@ -585,6 +708,7 @@ class MainWindow(QWidget):
 
         num_processes = int(self.num_processes_edit.text())
         end_frame = int(self.end_frame_process_edit.text())
+        print(end_frame)
         meta['end_frame'] = end_frame
         
         total_frames = end_frame - start_frame
@@ -644,7 +768,12 @@ class MainWindow(QWidget):
             f.create_group('fids_co')
             for i in range(num_fids):
                 f.create_dataset('fids_co/fid_{}'.format(i), data=save_fids_co[i])
-            f.create_dataset('meta', data=json.dumps(meta))
+            f.create_group('meta')
+            print('start frame dtype:' + str(meta['start_frame'].dtype))
+            print('pup params dtype:' + str(meta['pup_params'].dtype))
+            print('fid params dtype:' + str(meta['fid_params'].dtype))
+            for k,v in meta.items():
+                f.create_dataset('meta/' + k, data=np.array(meta[k]))
 
         
         # Close the video file
