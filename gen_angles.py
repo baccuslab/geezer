@@ -17,9 +17,8 @@ with h5.File('/run/media/jerome/datum/c007_crop/c007_full_geezer.h5','r') as f:
     led_co = {}
     pup_co = f['pup_co'][:][sidx]
     for i,(k,v) in enumerate(f['fids_co'].items()):
-        print(k)
-        print(v.shape)
-        led_co[leds[i]] = v[:][sidx]
+        plt.plot(v[:][sidx])
+        plt.show()
 
 
     

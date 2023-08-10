@@ -1,4 +1,5 @@
 import json
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5.QtWidgets import QApplication, QWidget, QSlider, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QLineEdit, QMessageBox, QCheckBox, QFrame, QTabWidget, QMainWindow, QTableWidget, QHeaderView, QTableWidgetItem, QFileDialog
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
@@ -41,7 +42,12 @@ class GeometryTab(QWidget):
         # Create the matplotlib canvas for 3D plotting
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
+        self.toolbar = NavigationToolbar(self.canvas, self)
+
         self.ax = self.figure.add_subplot(111, projection='3d')
+        self.ax.invert_xaxis()
+
+        self.figure.tight_layout()
         
         # Create the push buttons
         self.add_object_button = QPushButton("Add Object", self)
@@ -75,11 +81,15 @@ class GeometryTab(QWidget):
         left_layout.addWidget(self.load_button)
         
         main_layout.addLayout(left_layout)
-        main_layout.addWidget(self.canvas)
+
+        right_layout = QVBoxLayout()
+        right_layout.addWidget(self.toolbar)
+        right_layout.addWidget(self.canvas)
+        main_layout.addLayout(right_layout)
         
         # Set the stretch factors
         main_layout.setStretchFactor(left_layout, 1)  # table + buttons
-        main_layout.setStretchFactor(self.canvas, 3)  # plot
+        main_layout.setStretchFactor(right_layout, 3)  # plot
 
 
         

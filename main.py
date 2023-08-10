@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QSlider, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QLineEdit, QMessageBox, QCheckBox, QFrame, QTabWidget, QMainWindow, QTableWidget, QHeaderView, QTableWidgetItem
+from PyQt5.QtWidgets import QApplication, QWidget, QSlider, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QLineEdit, QMessageBox, QCheckBox, QFrame, QTabWidget, QMainWindow, QTableWidget, QHeaderView, QTableWidgetItem, QVBoxLayout
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, 
@@ -34,6 +34,8 @@ import utils
 
 from geometry import GeometryTab
 from image_processing import ImageProcTab
+from trajectory import TrajectoryTab
+
 
 # rcParams: set default so that axis isn't shown and no x or yticks
 plt.rcParams['axes.axisbelow'] = False
@@ -58,9 +60,11 @@ class MainWindow(QMainWindow):
 
         self.imageproctab= ImageProcTab(self)
         self.geometry_tab = GeometryTab(self)
+        self.trajectory_tab = TrajectoryTab(self)
 
         self.tabs.addTab(self.imageproctab, "Centroids")
         self.tabs.addTab(self.geometry_tab, "Geometry")
+        self.tabs.addTab(self.trajectory_tab, "Trajectory")
 
 
 def main():
