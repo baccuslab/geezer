@@ -31,14 +31,15 @@ from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import process_frame
+from utils import process_frame, load_geometry_json
 import utils 
 
 
 class GeometryTab(QWidget):
     def __init__(self, main_window, parent=None):
         super(GeometryTab, self).__init__(parent)
-          
+        
+        self.main_window = main_window
         # Create the matplotlib canvas for 3D plotting
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)
@@ -171,6 +172,7 @@ class GeometryTab(QWidget):
     def save_items(self):
         options = QFileDialog.Options()
         filePath, _ = QFileDialog.getSaveFileName(self, "Save File", "", "JSON Files (*.json);;All Files (*)", options=options)
+        self.saved_filepath = filePath
         
         if not filePath:
             return
@@ -199,12 +201,14 @@ class GeometryTab(QWidget):
     def load_items(self):
         options = QFileDialog.Options()
         filePath, _ = QFileDialog.getOpenFileName(self, "Load File", "", "JSON Files (*.json);;All Files (*)", options=options)
-        
+        self.loaded_filepath = filePath 
         if not filePath:
             return
         
         with open(filePath, 'r') as file:
             data = json.load(file)
+        self.main_window.trajectory_tab.geometry_data = load_geometry_json(filePath)
+        self.main_window.trajectory_tab.geometry_filename = filePath
     
 
         self.table.setRowCount(0)  # Clear the table
@@ -216,6 +220,8 @@ class GeometryTab(QWidget):
         
         for item_data in data:
             self.add_and_plot_object(item_data)
+
+        self.main_window.trajectory_tab.geo_label.setText(os.path.basename(filePath))
 
 class ObjectInputDialog(QDialog):
     # Signal to emit when an object is ready to be added

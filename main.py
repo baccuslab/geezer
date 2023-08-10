@@ -66,6 +66,13 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.geometry_tab, "Geometry")
         self.tabs.addTab(self.trajectory_tab, "Trajectory")
 
+        self.tabs.currentChanged.connect(self.tab_changed)
+    def tab_changed(self):
+        # if the tab is trajectory
+        if self.tabs.currentIndex() == 2:
+            self.tabs.currentWidget().update()
+
+
 
 def main():
     app = QApplication([])
