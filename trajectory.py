@@ -76,9 +76,13 @@ class TrajectoryTab(QWidget):
         bottom_row = QHBoxLayout()
         self.led_list = QListWidget()
 
+        self.cam_y_offset_edit = QLineEdit()
+        self.cam_y_offset_edit.setPlaceholderText('10')
+
         self.execute_push_button = QPushButton('Execute')
         self.execute_push_button.clicked.connect(self.execute)
-
+        
+        bottom_row.addWidget(self.cam_y_offset_edit)
         bottom_row.addWidget(self.execute_push_button)
         bottom_row.setStretchFactor(self.execute_push_button, 1)
         bottom_row.addWidget(self.led_list)
@@ -158,14 +162,6 @@ class TrajectoryTab(QWidget):
             dxdy = np.mean(dxdy,axis=0)
             cam_preds[led_idx] = dxdy
         
-
-
-        # for l in range(len(led_co)):
-        #     c = led_co[l][:] + cam_preds[l]
-            # plt.plot(c[:,0])
-        # plt.show()
-        # plt.close()
-
         thetas = [] 
         phis = [] 
         for led_idx in range(len(led_co)):
@@ -180,7 +176,7 @@ class TrajectoryTab(QWidget):
                 led_pix = led_co[led_idx][idx]
                 pup_pix = pup_co[idx]
                 cam_pix = led_co[led_idx][idx] + cam_preds[led_idx]
-                cam_pix[1] -= 10
+                cam_pix[1] -= int(self.cam_y_offset_edit.text())
 
                 e,a = utils.calc_gaze_angle(pup_pix, led_pix, cam_pix, [el, az])
                 t,p = utils.ray_trace(centered_rig_geometry, a, e) 
@@ -242,16 +238,10 @@ class TrajectoryTab(QWidget):
             sw = thetas[ii] 
             sw = np.rad2deg(sw)
             sw = sw - sw[20000]
-            # plt.plot(sw,'r')
-            # plt.show()
 
             sw[e] = np.nan
             sw[ee] = np.nan
 
-            # w = np.diff(sw) > 3 
-            # w = np.concatenate([w,[False]])
-            # sw[w] = np.nan
-            # y = sw
             sw[e] = np.nan
             sw[ee] = np.nan
             nans, x = utils.nan_helper(sw)
@@ -273,16 +263,17 @@ class TrajectoryTab(QWidget):
             sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
             # plt.plot(sw, 'k', lw=0.5)
             # plt.show()
-            cleaned_up_thetas[led] = sw
+            cleaned_up_thetas[led] = sw - sw[0]
+
         
-        self.phis = cleaned_up_phis
-        self.thetas = cleaned_up_thetas
         self.ax.clear()
         for led in cleaned_up_phis:
             self.ax.plot(cleaned_up_phis[led], label=led)
         self.ax.legend()
         self.canvas.draw()
 
+        self.phis = cleaned_up_phis
+        self.thetas = cleaned_up_thetas
 
     def create_column(self, layout, name):
         hbox = QVBoxLayout()

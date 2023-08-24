@@ -35,6 +35,7 @@ import utils
 from geometry import GeometryTab
 from image_processing import ImageProcTab
 from trajectory import TrajectoryTab
+from curate import CurateTab
 
 
 # rcParams: set default so that axis isn't shown and no x or yticks
@@ -58,15 +59,18 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget(self)
         self.setCentralWidget(self.tabs)
 
-        self.imageproctab= ImageProcTab(self)
+        self.imageproc_tab= ImageProcTab(self)
         self.geometry_tab = GeometryTab(self)
         self.trajectory_tab = TrajectoryTab(self)
+        self.curate_tab = CurateTab(self)
 
-        self.tabs.addTab(self.imageproctab, "Centroids")
+        self.tabs.addTab(self.imageproc_tab, "Centroids")
         self.tabs.addTab(self.geometry_tab, "Geometry")
         self.tabs.addTab(self.trajectory_tab, "Trajectory")
+        self.tabs.addTab(self.curate_tab, "Curate")
 
         self.tabs.currentChanged.connect(self.tab_changed)
+
     def tab_changed(self):
         # if the tab is trajectory
         if self.tabs.currentIndex() == 2:
