@@ -527,19 +527,27 @@ class ImageProcTab(QWidget):
         results = list(result_list)
 
         print(len(results))
-        save_frame_idxs = [x[0] for x in results] 
-        save_pupil_co = [x[1][0] for x in results]
+        save_frame_idxs = np.array([x[0] for x in results])
+        save_pupil_co = np.array([x[1][0] for x in results])
         save_fids_co = {} 
+
         num_fids = len(results[0][1][1])
         for i in range(num_fids):
-            save_fids_co[i] = [x[1][1][i] for x in results] 
+            save_fids_co[i] = np.array([x[1][1][i] for x in results])
         
         with h5.File(self.h5_filename, 'w') as f:
-            f.create_dataset('frame_idxs', data=save_frame_idxs)
+            sidx = np.argsort(save_frame_idxs)
+            frame_idxs = save_frame_idxs[sidx]
+            
+            f.create_dataset('frame_idxs', data=frame_idxs)
+
+            save_pupil_co = np.array(save_pupil_co)[sidx]
             f.create_dataset('pup_co', data=save_pupil_co)
+
+
             f.create_group('fids_co')
             for i in range(num_fids):
-                f.create_dataset('fids_co/fid_{}'.format(i), data=save_fids_co[i])
+                f.create_dataset('fids_co/fid_{}'.format(i), data=save_fids_co[i][sidx])
             f.create_dataset('meta', data=json.dumps(meta))
 
         

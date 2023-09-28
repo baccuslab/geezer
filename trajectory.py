@@ -173,6 +173,7 @@ class TrajectoryTab(QWidget):
             num_frames = frame_idxs.shape[0]
             for frame in tqdm.tqdm(range(num_frames)):
                 idx = frame_idxs[frame]
+
                 led_pix = led_co[led_idx][idx]
                 pup_pix = pup_co[idx]
                 cam_pix = led_co[led_idx][idx] + cam_preds[led_idx]
@@ -199,73 +200,81 @@ class TrajectoryTab(QWidget):
         cleaned_up_phis = {}
         cleaned_up_thetas = {}
         for ii,led in enumerate(['ne','nw', 'se', 'sw']):
-            sw = phis[ii] 
-            sw = np.rad2deg(sw)
-            sw = sw - sw[20000]
-            # plt.plot(sw,'r')
-            # plt.show()
+            try:
+                sw = phis[ii] 
+                sw = np.rad2deg(sw)
+                sw = sw - sw[20000]
+                # plt.plot(sw,'r')
+                # plt.show()
 
-            sw[e] = np.nan
-            sw[ee] = np.nan
+                sw[e] = np.nan
+                sw[ee] = np.nan
 
-            # w = np.diff(sw) > 3 
-            # w = np.concatenate([w,[False]])
-            # sw[w] = np.nan
-            # y = sw
-            sw[e] = np.nan
-            sw[ee] = np.nan
-            nans, x = utils.nan_helper(sw)
-            # # interpolate with scipy
+                # w = np.diff(sw) > 3 
+                # w = np.concatenate([w,[False]])
+                # sw[w] = np.nan
+                # y = sw
+                sw[e] = np.nan
+                sw[ee] = np.nan
+                nans, x = utils.nan_helper(sw)
+                print('nans', nans.shape)
+                # # interpolate with scipy
 
-            # w = np.diff(sw) > 5
-            # sw[:-1][w] = np.nan
-            # nans, x = utils.nan_helper(sw)
-            sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
-            # plt.plot(sw,'r')
-            # plt.show()
+                # w = np.diff(sw) > 5
+                # sw[:-1][w] = np.nan
+                # nans, x = utils.nan_helper(sw)
+                sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
+                # plt.plot(sw,'r')
+                # plt.show()
 
-            w = np.abs(np.diff(sw)) > 1 
-            sw[1:][w] = np.nan
+                w = np.abs(np.diff(sw)) > 1 
+                sw[1:][w] = np.nan
 
-            sw[sw > 20] = np.nan
-            sw[sw < -20] = np.nan
-            nans, x = utils.nan_helper(sw)
-            sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
-            # plt.plot(sw, 'k', lw=0.5)
-            # plt.show()
-            cleaned_up_phis[led] = sw
+                sw[sw > 20] = np.nan
+                sw[sw < -20] = np.nan
+                nans, x = utils.nan_helper(sw)
+                sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
+                # plt.plot(sw, 'k', lw=0.5)
+                # plt.show()
+                cleaned_up_phis[led] = sw - sw[0]
 
-            sw = thetas[ii] 
-            sw = np.rad2deg(sw)
-            sw = sw - sw[20000]
+                sw = thetas[ii] 
+                sw = np.rad2deg(sw)
+                sw = sw - sw[20000]
 
-            sw[e] = np.nan
-            sw[ee] = np.nan
+                sw[e] = np.nan
+                sw[ee] = np.nan
 
-            sw[e] = np.nan
-            sw[ee] = np.nan
-            nans, x = utils.nan_helper(sw)
-            # # interpolate with scipy
+                sw[e] = np.nan
+                sw[ee] = np.nan
+                nans, x = utils.nan_helper(sw)
+                # # interpolate with scipy
 
-            # w = np.diff(sw) > 5
-            # sw[:-1][w] = np.nan
-            # nans, x = utils.nan_helper(sw)
-            sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
-            # plt.plot(sw,'r')
-            # plt.show()
+                # w = np.diff(sw) > 5
+                # sw[:-1][w] = np.nan
+                # nans, x = utils.nan_helper(sw)
+                sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
+                # plt.plot(sw,'r')
+                # plt.show()
 
-            w = np.abs(np.diff(sw)) > 1 
-            sw[1:][w] = np.nan
+                w = np.abs(np.diff(sw)) > 1 
+                sw[1:][w] = np.nan
 
-            sw[sw > 5] = np.nan
-            sw[sw < -5] = np.nan
-            nans, x = utils.nan_helper(sw)
-            sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
-            # plt.plot(sw, 'k', lw=0.5)
-            # plt.show()
-            cleaned_up_thetas[led] = sw - sw[0]
+                sw[sw > 5] = np.nan
+                sw[sw < -5] = np.nan
+                nans, x = utils.nan_helper(sw)
+                print('nans', nans.shape)
+                sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
+                # plt.plot(sw, 'k', lw=0.5)
+                # plt.show()
+                cleaned_up_thetas[led] = sw - sw[0]
 
-        
+            except:
+                cleaned_up_phis[led] = np.zeros_like(sw)
+                cleaned_up_thetas[led] = np.zeros_like(sw)
+
+
+            
         self.ax.clear()
         for led in cleaned_up_phis:
             self.ax.plot(cleaned_up_phis[led], label=led)
@@ -318,6 +327,19 @@ class TrajectoryTab(QWidget):
     def save_phis_thetas(self):
         # Popup for save path
         # Save phis and thetas
+        with h5.File(self.coord_filename, 'a') as f:
+            frame_idxs = f['frame_idxs'][:]  
+            sidx = np.argsort(frame_idxs)
+            frame_idxs = frame_idxs[sidx]
+            
+            led_co = [] 
+            pup_co = f['pup_co'][:][sidx]
+            for i,(k,v) in enumerate(f['fids_co'].items()):
+                if i==0:
+                    cam_co = v[:][sidx]
+                else:
+                    led_co.append(v[:][sidx])
+        
         filename = QFileDialog.getSaveFileName(self, 'Save file', '/home')[0]
         if filename is not None:
             pickle.dump(self.phis, open(filename+'_phis.pkl','wb'))
