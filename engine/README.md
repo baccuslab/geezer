@@ -3,6 +3,8 @@
     <img src="https://github.com/simonarvin/eyeloop/blob/master/misc/imgs/engine_ill.svg?raw=true" align="right" height="300">
   </p>
 
+This code has been adapted from eyeloop with a few considerations from geezer. The final output will be (phis, thetas, diameter)
+
 The engine processes each frame of the video sequentially. First, the user selects the corneal reflections, then the pupil. The frame is binarized, filtered, and smoothed by a gaussian kernel. Then, the engine utilizes a walk-out algorithm to detect contours. This produces a matrix of points, which is filtered to discard bad matches. Using the corneal reflections, any overlap between the corneal reflections and the pupil is removed. Finally, the shape is parameterized by a fitting model: either an ellipsoid (suitable for rodents, cats, etc.), or a circle model (human, non-human primates, rodents, etc.). The target species is easily changed:
 ```
 python eyeloop/run_eyeloop.py --model circular/ellipsoid
