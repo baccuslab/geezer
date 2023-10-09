@@ -337,7 +337,7 @@ for led in ['se','sw', 'ne', 'nw']:
 
     # w = np.diff(sw) > 5
     # sw[:-1][w] = np.nan
-    # nans, x = nan_helper(sw)
+    # nans, x = nan_helper(sw)\
     sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
     # plt.plot(sw,'r')
     # plt.show()
