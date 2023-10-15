@@ -252,7 +252,7 @@ class ImageProcTab(QWidget):
         
         print(self.mp4_filename)
         # run the following command in a separate process
-        command = 'ffmpeg -i {} -filter:v "crop={}:{}:{}:{}" {}'.format(self.mp4_filename, x_end-x_start, y_end-y_start, x_start, y_start, crop_filename)
+        command = 'ffmpeg -i {} -c:v libopenh264 -filter:v "crop={}:{}:{}:{}" {}'.format(self.mp4_filename, x_end-x_start, y_end-y_start, x_start, y_start, crop_filename)
 
         print(command)
 
