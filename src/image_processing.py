@@ -1,5 +1,5 @@
 
-from PyQt5.QtWidgets import QApplication, QWidget, QSlider, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QLineEdit, QMessageBox, QCheckBox, QFrame, QTabWidget, QMainWindow, QTableWidget, QHeaderView, QTableWidgetItem
+from PyQt5.QtWidgets import QApplication, QWidget, QSlider, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QFileDialog, QLineEdit, QMessageBox, QCheckBox, QFrame, QTabWidget, QMainWindow, QTableWidget, QHeaderView, QTableWidgetItem, QListWidget, QInputDialog
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, 
@@ -9,6 +9,7 @@ import sys
 from matplotlib.backends.backend_qt5agg import (
     FigureCanvasQTAgg as FigureCanvas
 )
+import time
 from matplotlib.figure import Figure
 
 from PyQt5.QtGui import QIcon
@@ -158,8 +159,12 @@ class ImageProcTab(QWidget):
         self.high_clim_slider.setRange(0, 255)
         self.low_clim_slider.setValue(0)
         self.high_clim_slider.setValue(255)
+        
+        self.fiducial_IDs = []
+        self.fiducial_ID_list_widget= QListWidget()
 
         self.image_layout = QHBoxLayout()
+        self.image_layout.addWidget(self.fiducial_ID_list_widget)
         self.image_layout.addWidget(self.canvas)
         self.image_layout.addWidget(self.low_clim_slider)
         self.image_layout.addWidget(self.high_clim_slider)
@@ -247,16 +252,27 @@ class ImageProcTab(QWidget):
         # get a filepath from a qfiledialog
         crop_filename , _ = QFileDialog.getSaveFileName(self, 'Save file', ".", "mp4 files (*.mp4)")
 
+        # if the user didn't enter a file name, return
+        if crop_filename == '':
+            return
+        else:
+            del _
+
+
         if crop_filename[-4:] != '.mp4':
             crop_filename += '.mp4'
-        
-        print(self.mp4_filename)
+
         # run the following command in a separate process
         command = 'ffmpeg -i {} -c:v libopenh264 -filter:v "crop={}:{}:{}:{}" {}'.format(self.mp4_filename, x_end-x_start, y_end-y_start, x_start, y_start, crop_filename)
 
-        print(command)
 
+        self.main_window.statusBar().showMessage('Cropping video...')
         os.system(command)
+        # Set the status bar to show that the video is being cropped
+        self.main_window.statusBar().showMessage('Video cropped')
+
+
+
         
     def open_video(self):
         self.mp4_filename, _ = QFileDialog.getOpenFileName(self, 'Open Video File', ".", "Video Files (*.mp4)")
@@ -284,8 +300,18 @@ class ImageProcTab(QWidget):
         self.update_frame()
 
     def add_fid_co(self):
-        self.fids_co.append(self.last_co)
-        self.update_frame()
+        # Qinput to get the name of the fiducial
+        fid_name, ok = QInputDialog.getText(self, 'Fiducial name', 'Enter fiducial name:')
+        if ok:
+            self.fids_co.append(self.last_co)
+            self.fiducial_IDs.append(fid_name)
+            self.update_frame()
+
+        # Clear fiducial_ID_list_widget and rewrite IDs
+        self.fiducial_ID_list_widget.clear()
+        for fid in self.fiducial_IDs:
+            self.fiducial_ID_list_widget.addItem(fid)
+
 
     def slider_changed(self):
         if self.current_frame == self.frame_slider.value():
@@ -547,7 +573,8 @@ class ImageProcTab(QWidget):
 
             f.create_group('fids_co')
             for i in range(num_fids):
-                f.create_dataset('fids_co/fid_{}'.format(i), data=save_fids_co[i][sidx])
+                fiducial_ID = self.fiducial_IDs[i]
+                f.create_dataset('fids_co/'.format(fiducial_ID), data=save_fids_co[i][sidx])
             f.create_dataset('meta', data=json.dumps(meta))
 
         
