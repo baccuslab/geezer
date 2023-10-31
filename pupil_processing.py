@@ -585,7 +585,7 @@ class PupilProcTab(QWidget):
                 # if frame_idx == start_frame:
                 #     np.save('og_frame.npy', frame)
                 if ret:
-                    _processed_frame = process_frame(frame, pxy, fxys, proc_pup_params, proc_fid_params)
+                    _processed_frame = process_ellipse(frame, pxy, fxys, proc_pup_params, proc_fid_params)
                     processed_frame = [frame_idx, _processed_frame]
                     
                     local_results.append(processed_frame)
@@ -614,7 +614,8 @@ class PupilProcTab(QWidget):
         save_widths = np.array([x[1][2] for x in results])
         save_heights = np.array([x[1][3] for x in results])   
         save_phis = np.array([x[1][4] for x in results])
-        save_fids_co = {} 
+        save_fids_co = {}
+        # IPython.embed() 
 
         num_fids = len(results[0][1][1])
         for i in range(num_fids):

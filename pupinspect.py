@@ -40,7 +40,7 @@ frame_width = int(cap.get(3))
 frame_height = int(cap.get(4))
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use mp4v codec for .mp4
 
-out = cv2.VideoWriter('sample_overlay_3.mp4', fourcc, fps, (frame_width, frame_height))
+out = cv2.VideoWriter('sample_overlay_4.mp4', fourcc, fps, (frame_width, frame_height))
 
 for idx in frame_idxs:
     if idx >= len(pup_co):
