@@ -57,6 +57,7 @@ class ImageProcTab(QWidget):
         self.setWindowIcon(QIcon('logo.png'))
 
         self.video = None
+        self.dogs = None
         self.frame_count = 0
         self.current_frame = 0
         self.view=0
@@ -321,15 +322,15 @@ class ImageProcTab(QWidget):
                 self.axis.clear()
                 self.axis.imshow(frame, 'gray', clim=(low, high))
             else:
-                dogs = utils.dogs(frame, pp, fp)
+                self.dogs = utils.dogs(frame, pp, fp)
                 if self.view == 1:
-                    frame = dogs[0]
+                    frame = self.dogs[0]
                 elif self.view == 2:
-                    frame = dogs[1]
+                    frame = self.dogs[1]
                 elif self.view == 3:
-                    frame = dogs[2]
+                    frame = self.dogs[2]
                 elif self.view == 4:
-                    frame = dogs[3]
+                    frame = self.dogs[3]
 
 
                 self.axis.clear()

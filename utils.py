@@ -18,7 +18,13 @@ from scipy.spatial.distance import cdist
 from skimage.feature import blob_log
 from skimage import measure
 from scipy.spatial.distance import cdist
+import IPython
+from nutils import pupil_locator
+from engine.models import ellipsoid
+from globals import pupil_params
+import IPython
 
+model = ellipsoid.Ellipse
 
 def find_closest_centroid(image, threshold_value, point):
     # Threshold the image
@@ -26,10 +32,10 @@ def find_closest_centroid(image, threshold_value, point):
 
     # Find connected components above the threshold
     labels = measure.label(thresholded_image)
-    regions = measure.regionprops(labels)
+    regions = measure.regionprops(labels) 
 
     # Find the centroid coordinates of each connected component
-    centroids = [] 
+    centroids = []
     for region in regions:
         centroids.append(region.centroid)
 
@@ -60,7 +66,8 @@ def dogs(og_frame, pupil_params, fid_params):
     gauss_small = gs
     gauss_large = gl
 
-    dog = og_frame 
+    dog = og_frame
+    #thresshold the large amplitude to for detecting the pupil 
     dog = dog - np.min(dog)
     dog = dog / np.max(dog)
     dog = np.max(dog) - dog

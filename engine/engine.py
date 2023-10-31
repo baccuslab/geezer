@@ -11,7 +11,8 @@ from eyeloop.constants.engine_constants import *
 from eyeloop.engine.processor import Shape
 from eyeloop.utilities.general_operations import to_int, tuple_int
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger
+(__name__)
 PARAMS_DIR = f"{dirname(dirname(abspath(__file__)))}/engine/params"
 
 class Engine:

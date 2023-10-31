@@ -130,4 +130,4 @@ class Ellipse:
         self.params = ((x0, y0), width, height, np.rad2deg(phi) % 360)
 
         #self.center, self.width, self.height, self.angle = self.params
-        return self.params[0]
+        return self.params

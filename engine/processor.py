@@ -29,7 +29,7 @@ class Shape():
         self.type = type
         self.fit_ = lambda: None
 
-        self.model = config.arguments.model
+        self.model = Ellipse#config.arguments.model
         self.type_entry = None
         self.track = lambda x:None
 
@@ -216,9 +216,9 @@ class Shape():
         canvas[-1,:] = canvas[:,-1] = canvas[0,:] = canvas[:,0] = 0
 
 
-        r = rr_2d.copy()
+        r = np.zeros((32,2),dtype=np.float64)#rr_2d.copy()
 
-        crop_list = crop_stock.copy()
+        crop_list = np.zeros((32), dtype=int)#crop_stock.copy()
 
 
         canvas_ = canvas[center[1]:, center[0]:]

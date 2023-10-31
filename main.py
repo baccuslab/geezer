@@ -28,14 +28,17 @@ import cv2
 from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
+from multiprocessing import Process
+import multiprocessing
 
-from utils import process_frame
-import utils 
+# from utils import process_frame
+# import utils 
 
 from geometry import GeometryTab
 from image_processing import ImageProcTab
 from trajectory import TrajectoryTab
 from curate import CurateTab
+from pupil_processing import PupilProcTab
 
 
 # rcParams: set default so that axis isn't shown and no x or yticks
@@ -63,11 +66,14 @@ class MainWindow(QMainWindow):
         self.geometry_tab = GeometryTab(self)
         self.trajectory_tab = TrajectoryTab(self)
         self.curate_tab = CurateTab(self)
+        self.pupilproc_tab = PupilProcTab(self)
 
-        self.tabs.addTab(self.imageproc_tab, "Centroids")
+        # self.tabs.addTab(self.imageproc_tab, "Centroids")
+        self.tabs.addTab(self.pupilproc_tab, "Pupil")
         self.tabs.addTab(self.geometry_tab, "Geometry")
         self.tabs.addTab(self.trajectory_tab, "Trajectory")
-        self.tabs.addTab(self.curate_tab, "Curate")
+        # self.tabs.addTab(self.pupilproc_tab, "Pupil")
+        # self.tabs.addTab(self.curate_tab, "Curate")
 
         self.tabs.currentChanged.connect(self.tab_changed)
 
@@ -76,14 +82,11 @@ class MainWindow(QMainWindow):
         if self.tabs.currentIndex() == 2:
             self.tabs.currentWidget().update()
 
-
-
 def main():
     app = QApplication([])
     main_win = MainWindow()
     main_win.show()
     return app.exec_()
-
 
 if __name__ == "__main__":
     main()
