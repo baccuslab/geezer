@@ -20,11 +20,7 @@ from skimage import measure
 from scipy.spatial.distance import cdist
 import IPython
 from nutils import pupil_locator
-# from engine.models import ellipsoid
-# from globals import pupil_params
 import IPython
-
-# model = ellipsoid.Ellipse
 
 def find_closest_centroid(image, threshold_value, point):
     # Threshold the image

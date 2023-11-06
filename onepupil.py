@@ -1,22 +1,13 @@
 import numpy as np
 import utils
 import matplotlib.pyplot as plt
-# from engine.processor import Shape
-# from engine.models.ellipsoid import Ellipse
-# from engine.engine import Engine
 import IPython
-# import eyeloop
-# pupil_processor = Shape(Engine,Ellipse)
 
-# model = Ellipse(Engine)
 import cv2
 import nutils
 
 import numpy as np
-import eyeloop.config as config
 import scipy.signal
-
-# model_instance = model.Ellipse(pupil_processor)
 
 frame_file = '/home/grandline/geezer/og_frame.npy'
 frame = np.load(frame_file)
