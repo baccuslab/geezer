@@ -3,10 +3,10 @@ from globals import pupil_params
 import cv2
 import IPython
 import utils
-from engine.engine import Engine
-from engine.models.ellipsoid import Ellipse
+# from engine.engine import Engine
+# from engine.models.ellipsoid import Ellipse
 
-model = Ellipse(Engine)
+# model = Ellipse(Engine)
 
 angular_iter = 24
 angular_range = np.arange(angular_iter, dtype=np.int8)

@@ -10,7 +10,7 @@ import numpy as np
 import h5py
 
 filename = '/media/grandline/ExtremeSSD/0706/july062023jf/minibatch.h5'
-frames = '/media/grandline/ExtremeSSD/0706/july062023jf/small_crop.mp4'
+frames = '/media/grandline/ExtremeSSD/0706/july062023jf/super_crop.mp4'#'/media/grandline/ExtremeSSD/0706/july062023jf/cam_crop.mp4'#'/media/grandline/ExtremeSSD/0706/july062023jf/small_crop.mp4'
 frame = '/media/grandline/ExtremeSSD/0706/july062023jf/og_frame.npy'
 
 with h5py.File(filename, 'r') as f:

@@ -1,14 +1,14 @@
 import numpy as np
 import utils
 import matplotlib.pyplot as plt
-from engine.processor import Shape
-from engine.models.ellipsoid import Ellipse
-from engine.engine import Engine
+# from engine.processor import Shape
+# from engine.models.ellipsoid import Ellipse
+# from engine.engine import Engine
 import IPython
-import eyeloop
-pupil_processor = Shape(Engine,Ellipse)
+# import eyeloop
+# pupil_processor = Shape(Engine,Ellipse)
 
-model = Ellipse(Engine)
+# model = Ellipse(Engine)
 import cv2
 import nutils
 
@@ -20,13 +20,21 @@ import scipy.signal
 
 frame_file = '/home/grandline/geezer/og_frame.npy'
 frame = np.load(frame_file)
-pupil_params = [4, 25, 150, 200]#[4, 25, 150, 160] #[3, 20, 120, 200]
-fid_params = [1,3,11,90]#[1, 3, 11, 100]
+pupil_params = [13,25,40,95]#[4,25,95,200]#[11,34,90,195]#[9,30, 150,200]#[4, 25, 150, 200]#[4, 25, 150, 160] #[3, 20, 120, 200]
+fid_params = [1,2,11,90]#[1,3,11,90]#[1, 3, 11, 100]
 pup = [275.0906788247214, 137.07244174265455]
 fids = [[183.8809523809524, 46.35309017223915],[147.59321175278623, 65.968085106383],[244.6874366767984, 51.747213779128685],[67.17173252279635, 217.49392097264442],[385.9154002026343, 148.84143870314085]]
 # random_vec = np.random.randint(0, 255, (32, 2))
 
+file = '/media/grandline/ExtremeSSD/rot_10ms.h5'
 
+import h5py as h5 
+
+with h5.File(file, 'r') as f:
+    keys = list(f.keys())
+    frame_idx =  f['series_001/epoch_001/frame_idxs'][:]
+
+print(frame_idx)
 
 
 ################################################################
