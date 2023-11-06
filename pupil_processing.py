@@ -33,7 +33,7 @@ from globals import pupil_params
 from utils import process_frame
 import utils 
 from nutils import process_ellipse
-from engine.models import ellipsoid
+# from engine.models import ellipsoid
 
 from geometry import GeometryTab
 import IPython
