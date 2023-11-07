@@ -233,9 +233,10 @@ def cond(r, crop_list):
     return r[cond_]
 
 last_known_center = None
+last_known_phi_deg = None
 
 def process_ellipse(frame, pup, fids, pupil_params, fid_params):
-    global last_known_center
+    global last_known_center, last_known_phi_deg
 
     pf, pt, ff, ft = utils.dogs(frame, pupil_params, fid_params)
 
@@ -254,7 +255,17 @@ def process_ellipse(frame, pup, fids, pupil_params, fid_params):
     pxy, width, height, phi = fit(pup_loc)
     fid_xys = [utils.find_closest_centroid(ft, 100, fid) for fid in fids]
 
-    return pxy, fid_xys, width, height, phi
+    try:
+        phi_deg = np.rad2deg(phi) % 360
+    
+    except Exception as e:
+
+        print('Error:', e)
+        phi_deg = last_known_phi_deg
+
+    last_known_phi_deg = phi_deg
+
+    return pxy, fid_xys, width, height, phi_deg
 
 
 # def process_ellipse(frame, pup, fids, pupil_params, fid_params):
