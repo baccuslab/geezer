@@ -31,9 +31,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from globals import pupil_params
 from utils import process_frame
+from utils import process_ellipse
 import utils 
-from nutils import process_ellipse
-
 from geometry import GeometryTab
 import IPython
 
@@ -581,8 +580,6 @@ class PupilProcTab(QWidget):
                 video.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
                 ret, frame = video.read()
                 frame = frame.mean(axis=2)
-                # if frame_idx == start_frame:
-                #     np.save('og_frame.npy', frame)
                 if ret:
                     _processed_frame = process_ellipse(frame, pxy, fxys, proc_pup_params, proc_fid_params)
                     processed_frame = [frame_idx, _processed_frame]
