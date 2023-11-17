@@ -319,7 +319,7 @@ max_radius = 200
 
 threshold = len(crop_stock) * min_radius * 1.05
 
-def pupil_locator(frame, center, min_radius=2, max_radius=100, threshold=threshold):
+def pupil_locator(frame, center, min_radius=2, max_radius=150, threshold=threshold):
     # try:
     #     cent = np.round(center).astype(int)
     # except:
