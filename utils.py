@@ -424,29 +424,29 @@ def cond(r, crop_list):
 
     return r[cond_]
 
-last_known_center = None
+# last_known_center = None
 
-def process_ellipse(frame, pup, fids, pupil_params, fid_params):
-    global last_known_center
+# def process_ellipse(frame, pup, fids, pupil_params, fid_params):
+#     global last_known_center
 
-    pf, pt, ff, ft = dogs(frame, pupil_params, fid_params)
+#     pf, pt, ff, ft = dogs(frame, pupil_params, fid_params)
 
-    if last_known_center is not None:
-        center = last_known_center
-    else:
-        center = center_loc(pt, pup)
+#     if last_known_center is not None:
+#         center = last_known_center
+#     else:
+#         center = center_loc(pt, pup)
 
-    if center is None:
-        center = find_closest_centroid(pt, 100, pup)
+#     if center is None:
+#         center = find_closest_centroid(pt, 100, pup)
 
-    # Update the last_known_center
-    last_known_center = center
+#     # Update the last_known_center
+#     last_known_center = center
 
-    pup_loc = pupil_locator(pt, center)
-    pxy, width, height, phi = fit(pup_loc)
-    fid_xys = [find_closest_centroid(ft, 100, fid) for fid in fids]
+#     pup_loc = pupil_locator(pt, center)
+#     pxy, width, height, phi = fit(pup_loc)
+#     fid_xys = [find_closest_centroid(ft, 100, fid) for fid in fids]
 
-    return pxy, fid_xys, width, height, phi
+#     return pxy, fid_xys, width, height, phi
 
 def draw_ellpse_on_frame(frame, pxy, width, height, phi):
     # Assuming you have your image as a NumPy array
@@ -625,6 +625,36 @@ def center_loc(bin_img, center):
 
     return center
 
+def process_ellipse(frame, pup, fids, pupil_params, fid_params):
+    pf, pt, ff, ft = dogs(frame, pupil_params, fid_params)
+    # center = utils.find_closest_centroid(pt, 100, pup)
+    center =  center_loc(pt, pup) #finds circle
+    pup_loc = pupil_locator(pt, center) #finds edges
+    pxy, width, height, phi = fit(pup_loc) #fits ellipse
+    # pxy, width, height, phi = model.fit(pup_loc)
+    fid_xys = [find_closest_centroid(ft, 100, fid) for fid in fids] 
 
+    return pxy, fid_xys, width, height, phi
+    # if center is None:
+    #     center = utils.find_closest_centroid(pt, 100, pup)
 
+    #     if center is None:
 
+    #         center = pup
+        
+    #     # center = utils.find_closest_centroid(pt, 100, pup) #finds circle
+    #         pup_loc = pupil_locator(pt, center) #finds edges
+    #         pxy, width, height, phi = fit(pup_loc) #fits ellipse
+    #         # pxy, width, height, phi = model.fit(pup_loc)
+    #         fid_xys = [utils.find_closest_centroid(ft, 100, fid) for fid in fids] 
+
+    #         return pxy, fid_xys, width, height, phi
+    # else:
+
+    #     center = center
+    #     pup_loc = pupil_locator(pt, center) #finds edges
+    #     pxy, width, height, phi = fit(pup_loc) #fits ellipse
+    #     # pxy, width, height, phi = model.fit(pup_loc)
+    #     fid_xys = [utils.find_closest_centroid(ft, 100, fid) for fid in fids] 
+
+    #     return pxy, fid_xys, width, height, phi
