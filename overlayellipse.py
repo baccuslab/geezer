@@ -4,15 +4,14 @@ from mpl_toolkits.mplot3d import Axes3D
 from scipy.interpolate import griddata
 import numpy as np
 import cv2
-
 import cv2
 import numpy as np
 import h5py
 import multiprocessing as mp
+from tqdm import tqdm
 
-filename = '/media/grandline/ExtremeSSD/0706/july062023jf/minibatch.h5'
-frames = '/media/grandline/ExtremeSSD/0706/july062023jf/super_crop.mp4'#'/media/grandline/ExtremeSSD/0706/july062023jf/cam_crop.mp4'#'/media/grandline/ExtremeSSD/0706/july062023jf/small_crop.mp4'
-frame = '/media/grandline/ExtremeSSD/0706/july062023jf/og_frame.npy'
+filename = '/media/grandline/ExtremeSSD/0706/july062023jf/efit.h5'
+frames = '/media/grandline/ExtremeSSD/0706/july062023jf/croPped.mp4'
 
 with h5py.File(filename, 'r') as f:
     keys = list(f.keys())
@@ -41,9 +40,9 @@ frame_width = int(cap.get(3))
 frame_height = int(cap.get(4))
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use mp4v codec for .mp4
 
-out = cv2.VideoWriter('sample_overlay_4.mp4', fourcc, fps, (frame_width, frame_height))
+out = cv2.VideoWriter('~/sample_overlay.mp4', fourcc, fps, (frame_width, frame_height))
 
-for idx in frame_idxs: #range(2000, 2000 + len(frame_idxs)):
+for idx in tqdm(frame_idxs):
     if idx >= len(pup_co):
         continue  # Skip frames for which there's no data
 

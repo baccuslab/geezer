@@ -45,15 +45,6 @@ def find_closest_centroid(image, threshold_value, point):
 
     return (closest_centroid[1], closest_centroid[0])
 
-def process_frame(frame, pup, fids, pupil_params, fid_params):
-    t = time.time()
-    pf, pt, ff, ft = dogs(frame, pupil_params, fid_params)
-    pup_xy = find_closest_centroid(pt, 100, pup)
-    fid_xys = [find_closest_centroid(ft, 100, fid) for fid in fids]
-    print(time.time() - t)
-
-    return pup_xy, fid_xys
-
 def dogs(og_frame, pupil_params, fid_params):
     print(pupil_params)
     exp, gs, gl, thresh = pupil_params

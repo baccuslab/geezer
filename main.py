@@ -35,7 +35,6 @@ import multiprocessing
 # import utils 
 
 from geometry import GeometryTab
-from image_processing import ImageProcTab
 from trajectory import TrajectoryTab
 from curate import CurateTab
 from pupil_processing import PupilProcTab
