@@ -61,7 +61,6 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget(self)
         self.setCentralWidget(self.tabs)
 
-        self.imageproc_tab= ImageProcTab(self)
         self.geometry_tab = GeometryTab(self)
         self.trajectory_tab = TrajectoryTab(self)
         self.curate_tab = CurateTab(self)

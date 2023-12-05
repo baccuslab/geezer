@@ -32,7 +32,7 @@ from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import process_frame
+from utils import process_ellipse
 import utils 
 
 from geometry import GeometryTab
@@ -391,7 +391,7 @@ class CurateTab(QWidget):
                 ret, frame = video.read()
                 frame = frame.mean(axis=2)
                 if ret:
-                    _processed_frame = process_frame(frame, pxy, fxys, proc_pup_params, proc_fid_params)
+                    _processed_frame = process_ellipse(frame, pxy, fxys, proc_pup_params, proc_fid_params)
                     processed_frame = [frame_idx, _processed_frame]
                     
                     local_results.append(processed_frame)
@@ -418,6 +418,9 @@ class CurateTab(QWidget):
         print(len(results))
         save_frame_idxs = [x[0] for x in results] 
         save_pupil_co = [x[1][0] for x in results]
+        save_widths = np.array([x[1][2] for x in results])
+        save_heights = np.array([x[1][3] for x in results])   
+        save_phis = np.array([x[1][4] for x in results])
         save_fids_co = {} 
         num_fids = len(results[0][1][1])
         for i in range(num_fids):
@@ -426,6 +429,9 @@ class CurateTab(QWidget):
         with h5.File(self.h5_filename, 'w') as f:
             f.create_dataset('frame_idxs', data=save_frame_idxs)
             f.create_dataset('pup_co', data=save_pupil_co)
+            f.create_dataset('width', data=save_widths[sidx])
+            f.create_dataset('height', data=save_heights[sidx])
+            f.create_dataset('phi', data=save_phis[sidx])
             f.create_group('fids_co')
             for i in range(num_fids):
                 f.create_dataset('fids_co/fid_{}'.format(i), data=save_fids_co[i])
