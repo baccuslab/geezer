@@ -33,7 +33,7 @@ from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import process_frame
+from utils import process_ellipse
 import utils 
 
 
