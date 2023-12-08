@@ -127,9 +127,10 @@ plt.rcParams['axes.spines.right'] = False
 DEFAULT_PARAMS = {'pupil': {'exp': 3, 'small': 20, 'large': 50, 'thresh': 200},
                   'fids': {'exp': 1, 'small': 3, 'large': 11, 'thresh': 65}}
 
-class PupilProcTab(QWidget):
+class ImageProcTab(QWidget):
     def __init__(self, main_window, parent=None):
-        super(PupilProcTab, self).__init__(parent)
+        super(ImageProcTab, self).__init__(parent)
+
         # set icon
         self.main_window = main_window
         self.setWindowIcon(QIcon('logo.png'))

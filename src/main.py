@@ -37,7 +37,7 @@ import multiprocessing
 from geometry import GeometryTab
 from trajectory import TrajectoryTab
 from curate import CurateTab
-from pupil_processing import PupilProcTab
+from image_proc import ImageProcTab
 
 
 # rcParams: set default so that axis isn't shown and no x or yticks
@@ -64,13 +64,11 @@ class MainWindow(QMainWindow):
         self.geometry_tab = GeometryTab(self)
         self.trajectory_tab = TrajectoryTab(self)
         self.curate_tab = CurateTab(self)
-        self.pupilproc_tab = PupilProcTab(self)
+        self.imageproc_tab = ImageProcTab(self)
 
-        # self.tabs.addTab(self.imageproc_tab, "Centroids")
-        self.tabs.addTab(self.pupilproc_tab, "Pupil")
+        self.tabs.addTab(self.imageproc_tab, "Centroids")
         self.tabs.addTab(self.geometry_tab, "Geometry")
         self.tabs.addTab(self.trajectory_tab, "Trajectory")
-        # self.tabs.addTab(self.pupilproc_tab, "Pupil")
         self.tabs.addTab(self.curate_tab, "Curate")
 
         self.tabs.currentChanged.connect(self.tab_changed)
