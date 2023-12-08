@@ -10,8 +10,8 @@ import h5py
 import multiprocessing as mp
 from tqdm import tqdm
 
-filename = '/media/grandline/ExtremeSSD/0706/july062023jf/efit.h5'
-frames = '/media/grandline/ExtremeSSD/0706/july062023jf/croPped.mp4'
+frames = '/home/melandrocyte/cam_22248110.mp4'
+filename = '/home/melandrocyte/test.h5'
 
 with h5py.File(filename, 'r') as f:
     keys = list(f.keys())
@@ -40,7 +40,7 @@ frame_width = int(cap.get(3))
 frame_height = int(cap.get(4))
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use mp4v codec for .mp4
 
-out = cv2.VideoWriter('~/sample_overlay.mp4', fourcc, fps, (frame_width, frame_height))
+out = cv2.VideoWriter('/home/melandrocyte/sample_overlay.mp4', fourcc, fps, (frame_width, frame_height))
 
 for idx in tqdm(frame_idxs):
     if idx >= len(pup_co):
