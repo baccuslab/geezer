@@ -258,19 +258,62 @@ class CurateTab(QWidget):
             
             # pp, fp = self.get_params()
             if ret:
-                frame = frame
-                low = self.low_clim_slider.value()
-                high = self.high_clim_slider.value()
-                self.axis.clear()
-                self.axis.imshow(frame, 'gray', clim=(low, high))
+                if self.view == 0:
+                    frame = frame
+                    low = self.low_clim_slider.value()
+                    high = self.high_clim_slider.value()
+                    self.axis.clear()
+                    self.axis.imshow(frame, 'gray', clim=(low, high))
+                else:
+                    dogs = utils.dogs(frame, pp, fp)
+                    if self.view == 1:
+                        frame = dogs[0]
+                    elif self.view == 2:
+                        frame = dogs[1]
+                    elif self.view == 3:
+                        frame = dogs[2]
+                    elif self.view == 4:
+                        frame = dogs[3]
 
-        if self.geezer_filename is not None:
-            pup_co = self.pup_co[self.current_frame,:]
-            for fid in self.fiducials:
-                fid_co = self.fiducials[fid][self.current_frame,:]
-                print(fid_co)
-                self.axis.plot(fid_co[0], fid_co[1], 'co', alpha=0.5)
-            self.axis.plot(pup_co[0], pup_co[1], 'ro', alpha=0.5)
+                    self.axis.clear()
+                    #new
+                    low = self.low_clim_slider.value()
+                    high = self.high_clim_slider.value()
+                    self.axis.imshow(frame, 'gray', clim=(low,high))
+
+        # if self.geezer_filename is not None:
+        #     if self.current_frame not in self.order:
+        #         pup_co = self.pup_co[self.order[-1],:]
+        #     else:
+        #         self.update_frame()
+        #         pup_co = self.pup_co[self.current_frame,:]
+        #     for fid in self.fiducials:
+        #         fid_co = self.fiducials[fid][self.current_frame,:]
+        #         print(fid_co)
+        #         self.axis.plot(fid_co[0], fid_co[1], 'co', alpha=0.5)
+        #     self.axis.plot(pup_co[0], pup_co[1], 'ro', alpha=0.5)
+            if self.geezer_filename is None:
+                self.open_geezer()
+                # if self.current_frame not in self.order:
+                #     pup_co = self.pup_co[self.order[-1],:]
+                # else:
+                #     self.update_frame()
+                #     pup_co = self.pup_co[self.current_frame,:]
+                # self.axis.plot(pup_co[0], pup_co[1], 'ro', alpha=0.5)
+                # if len(self.fiducials) > 0:
+                #     for fid in self.fiducials:
+                #         fid_co = self.fiducials[fid][self.current_frame,:]
+                #         self.axis.plot(fid_co[0], fid_co[1], 'co', alpha=0.5)
+            else:
+                if self.current_frame in self.order:
+                    self.axis.plot(self.pup_co[0], self.pup_co[1], 'ro')
+                    for k, v in self.fiducials.items():
+                        fid_co = v[self.order == self.current_frame][0]
+                        self.axis.plot(fid_co[0], fid_co[1], 'co', alpha=0.5)
+
+                else:
+                    print(self.current_frame)
+                    print(self.frame_idxs)
 
         self.canvas.draw()
         self.trace_canvas.draw()

@@ -172,7 +172,7 @@ class TrajectoryTab(QWidget):
             
             num_frames = frame_idxs.shape[0]
             for frame in tqdm.tqdm(range(num_frames)):
-                idx = frame_idxs[frame]
+                idx = frame
 
                 led_pix = led_co[led_idx][idx]
                 pup_pix = pup_co[idx]
