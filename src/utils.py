@@ -597,6 +597,11 @@ def process_ellipse(frame, pup, fids, pupil_params, fid_params):
     center = find_closest_centroid(pt, 100, pup)
     pup_loc = pupil_locator(pt, center) #finds edges
     pxy, width, height, phi = fit(pup_loc) #fits ellipse
-    fid_xys = [find_closest_centroid(ft, 100, fid) for fid in fids] 
 
-    return pxy, fid_xys, width, height, phi
+    final_fid_xys = {} 
+    for k,v in fids.items():
+        final_fid_xys[k] = find_closest_centroid(ft, 100, v)
+
+
+
+    return pxy, final_fid_xys, width, height, phi

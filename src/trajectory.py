@@ -77,7 +77,7 @@ class TrajectoryTab(QWidget):
         self.led_list = QListWidget()
 
         self.cam_y_offset_edit = QLineEdit()
-        self.cam_y_offset_edit.setPlaceholderText('10')
+        self.cam_y_offset_edit.setText('-8')
 
         self.execute_push_button = QPushButton('Execute')
         self.execute_push_button.clicked.connect(self.execute)
