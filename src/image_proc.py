@@ -303,10 +303,12 @@ class ImageProcTab(QWidget):
         self.image_layout = QHBoxLayout()
 
 
+        self.image_layout.addWidget(self.fiducial_coordinate_list)
+        self.image_layout.addStretch(1)
         self.image_layout.addWidget(self.canvas)
         self.image_layout.addWidget(self.low_clim_slider)
         self.image_layout.addWidget(self.high_clim_slider)
-
+        self.image_layout.addStretch(1)
         self.image_layout.addWidget(self.fiducial_coordinate_list)
 
 
