@@ -605,3 +605,60 @@ def process_ellipse(frame, pup, fids, pupil_params, fid_params):
 
 
     return pxy, final_fid_xys, width, height, phi
+
+import cv2
+import numpy as np
+
+def compute_average_frame(video_path):
+    # Open the video file
+    cap = cv2.VideoCapture(video_path)
+
+    if not cap.isOpened():
+        raise ValueError("Could not open video file")
+
+    # Initialize variables for computing the average frame
+    frame_count = 0
+    total_frame = None
+    total_frame_squared= None
+
+    num_frames_in_video = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    # Loop through each frame in the video
+    while True:
+        ret, frame = cap.read()
+
+        if not ret:
+            break  # Break the loop when no more frames are available
+
+        # Convert the frame to a numpy array
+        frame = np.array(frame)
+        frame = frame.mean(axis=2)  # Convert to grayscale
+
+        if total_frame is None:
+            total_frame = frame.astype(np.float64)
+            total_frame_squared = frame.astype(np.float64)**2
+        else:
+            total_frame += frame.astype(np.float64)
+            total_frame_squared += frame.astype(np.float64)**2
+
+        frame_count += 1
+
+        if frame_count % 100 == 0:
+            percent_complete = (frame_count / num_frames_in_video) * 100
+            print("{} % Complete \n ---- processed {} / {} frames".format(percent_complete,frame_count,num_frames_in_video))
+
+    # Calculate the average frame by dividing the total frame by the number of frames
+    average_frame = (total_frame / frame_count).astype(np.uint8)
+    average_frame_squared = (total_frame_squared / frame_count).astype(np.uint8)
+
+    # Calculate the standard deviation frame
+    std_frame = np.sqrt(average_frame_squared - average_frame**2).astype(np.uint8)
+
+    # Release the video capture object
+    cap.release()
+
+    return average_frame, std_frame
+
+# Example usage:
+# average_frame = compute_average_frame("your_video.mp4")
+

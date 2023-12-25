@@ -19,6 +19,7 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem,
     QInputDialog,
 )
+import scipy.ndimage
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import (
     QApplication,
@@ -211,23 +212,29 @@ class ImageProcTab(QWidget):
         self.canvas = FigureCanvas(self.figure)
         self.canvas.mpl_connect("button_press_event", self.onclick)
 
+        self.z_frame = None
+
         self.frame_slider = QSlider(Qt.Horizontal, self)
         self.frame_enter = QLineEdit()
         self.frame_enter.setPlaceholderText("Frame")
         self.frame_enter.returnPressed.connect(self.slider_changed)
         self.frame_slider.valueChanged.connect(self.slider_changed)
 
-        self.low_clim_slider = QSlider(Qt.Vertical, self)
-        self.high_clim_slider = QSlider(Qt.Vertical, self)
 
         self.open_button = QPushButton("Load .mp4 file", self)
+        self.subtract_average_checkbox = QCheckBox("Subtract average frame", self)
+        self.subtract_average_checkbox.setChecked(False)
         self.crop_button = QPushButton("Crop", self)
+
+        self.calc_save_avg_button = QPushButton("Calc/Save Avg", self)
+        self.calc_save_avg_button.clicked.connect(self.calc_save_avg)
+
+        self.load_avg_button = QPushButton("Load Avg", self)
+        self.load_avg_button.clicked.connect(self.load_avg)
 
         self.process_button = QPushButton("Process section", self)
 
         self.frame_slider.valueChanged.connect(self.slider_changed)
-        self.low_clim_slider.valueChanged.connect(self.clim_changed)
-        self.high_clim_slider.valueChanged.connect(self.clim_changed)
         self.open_button.clicked.connect(self.open_video)
         self.process_button.clicked.connect(self.process_video)
         # self.start_end_button.clicked.connect(self.start_end)
@@ -289,11 +296,8 @@ class ImageProcTab(QWidget):
         self.start_frame_label = QLabel("Start frame")
         self.end_frame_label = QLabel("End frame")
         self.num_processes_label = QLabel("Number of processes")
+        
 
-        self.low_clim_slider.setRange(0, 255)
-        self.high_clim_slider.setRange(0, 255)
-        self.low_clim_slider.setValue(0)
-        self.high_clim_slider.setValue(255)
 
         self.fiducial_coordinate_list = QListWidget()
         self.fiducial_coordinate_list.itemClicked.connect(
@@ -301,15 +305,20 @@ class ImageProcTab(QWidget):
 
 
         self.image_layout = QHBoxLayout()
+        
+        self.pix_val_column = QVBoxLayout()
+        self.high_lim_edit = QLineEdit()
+        self.low_lim_edit = QLineEdit()
 
+        self.pix_val_column.addWidget(self.high_lim_edit)
+        self.pix_val_column.setStretch(0, 1)
+        self.pix_val_column.addWidget(self.low_lim_edit)
 
         self.image_layout.addWidget(self.fiducial_coordinate_list)
         self.image_layout.addStretch(1)
         self.image_layout.addWidget(self.canvas)
-        self.image_layout.addWidget(self.low_clim_slider)
-        self.image_layout.addWidget(self.high_clim_slider)
         self.image_layout.addStretch(1)
-        self.image_layout.addWidget(self.fiducial_coordinate_list)
+        self.image_layout.addLayout(self.pix_val_column)
 
 
 
@@ -347,6 +356,9 @@ class ImageProcTab(QWidget):
         box = QHBoxLayout()
         box.addWidget(self.open_button)
         box.addWidget(self.crop_button)
+        box.addWidget(self.calc_save_avg_button)
+        box.addWidget(self.load_avg_button)
+        box.addWidget(self.subtract_average_checkbox)
 
         layout.addLayout(box)
 
@@ -383,6 +395,39 @@ class ImageProcTab(QWidget):
         self.fid_min.setText(str(params["fids"]["small"]))
         self.fid_max.setText(str(params["fids"]["large"]))
         self.fid_thresh.setText(str(params["fids"]["thresh"]))
+    
+    def calc_save_avg(self):
+        average_frame, std_frame = utils.compute_average_frame(self.mp4_filename)
+
+        self.z_frame = []
+        self.z_frame.append(average_frame)
+        self.z_frame.append(std_frame)
+        self.z_frame = np.array(self.z_frame)
+
+        
+        # Popup to get location to save .npy of average frame
+        avg_filename, _ = QFileDialog.getSaveFileName(
+            self, "Save z stats", ".", "npy files (*.npy)"
+        )
+
+        if avg_filename[-4:] != ".npy":
+            avg_filename += ".npy"
+
+        np.save(avg_filename, self.z_frame)
+
+
+    def load_avg(self):
+
+        # Popup to get location to load .npy of average frame
+        avg_filename, _ = QFileDialog.getOpenFileName(
+            self, "Load average frame", ".", "npy files (*.npy)"
+        )
+        
+        self.z_frame= np.load(avg_filename)
+        print(z_frame[0].max())
+        print(z_frame[0].min())
+        print(z_frame[1].max())
+        print(z_frame[1].min())
 
     def crop_video(self):
         ul = self.upper_left_crop_coords
@@ -428,10 +473,6 @@ class ImageProcTab(QWidget):
             self.frame_slider.setMaximum(self.frame_count - 1)
             self.frame_slider.setValue(0)
             ret, frame = self.video.read()
-            self.low_clim_slider.setMaximum(np.max(frame))
-            self.low_clim_slider.setValue(np.min(frame))
-            self.high_clim_slider.setMaximum(np.max(frame))
-            self.high_clim_slider.setValue(np.max(frame))
 
             self.update_frame()
 
@@ -454,8 +495,6 @@ class ImageProcTab(QWidget):
             self.current_frame = self.frame_slider.value()
         self.update_frame()
 
-    def clim_changed(self):
-        self.update_frame()
 
     def onclick(self, event):
         self.last_co = [event.xdata, event.ydata]
@@ -480,12 +519,18 @@ class ImageProcTab(QWidget):
         ret, frame = self.video.read()
         frame = frame.mean(axis=2)
 
+        if self.z_frame is not None and self.subtract_average_checkbox.isChecked():
+            frame = frame - self.z_frame[0]
+            frame = frame / self.z_frame[1]
+
         pp, fp = self.get_params()
         if ret:
+            low = self.low_lim_edit.text()
+            high= self.high_lim_edit.text()
+
             if self.view == 0:
                 frame = frame
-                low = self.low_clim_slider.value()
-                high = self.high_clim_slider.value()
+
                 self.axis.clear()
                 self.axis.imshow(frame, "gray", clim=(low, high))
             else:
@@ -500,8 +545,6 @@ class ImageProcTab(QWidget):
                     frame = self.dogs[3]
 
                 self.axis.clear()
-                low = self.low_clim_slider.value()
-                high = self.high_clim_slider.value()
                 self.axis.imshow(frame, "gray", clim=(low, high))
 
             if self.pupil_co is not None:
@@ -524,11 +567,6 @@ class ImageProcTab(QWidget):
             self.canvas.draw()
             self.setFocus()
 
-    def adjust_clim(self, image, low, high):
-        # Adjust the contrast limits of the image here. This is a simple linear rescale, but you could replace this
-        # with any function you want.
-        image = np.clip(image, low, high)
-        return 255 * (image - low) / (high - low)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_1:
