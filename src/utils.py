@@ -618,3 +618,4 @@ def process_frame(frame, pup, fids, pupil_params, fid_params, ellipse=False):
         phi = None
 
         return pxy, final_fid_xys, width, height, phi
+

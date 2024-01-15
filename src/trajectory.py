@@ -108,11 +108,33 @@ class TrajectoryTab(QWidget):
         execute_button.clicked.connect(self.execute)
         lock_buttons_layout.addWidget(execute_button)
 
-
         self.selection_layout.addLayout(lock_buttons_layout)
 
-        # Add selection layout to main layout
+        # Add coordinate canvas
+        
+        self.quality_control_row = QHBoxLayout()
+        self.quality_control_plot_layout = QVBoxLayout()
+        self.figure = Figure()
+        self.canvas = FigureCanvas(self.figure)
+        self.toolbar = NavigationToolbar(self.canvas, self)
+
+        self.ax = self.figure.add_subplot(111)
+        self.ax.invert_yaxis()
+
+        self.quality_control_plot_layout.addWidget(self.toolbar)
+        self.quality_control_plot_layout.addWidget(self.canvas)
+
+        self.quality_control_row.addLayout(self.quality_control_plot_layout)
+        self.quality_control_row.addStretch(1)
+
+
+
+
+
+
+        # Add things to layout
         layout.addLayout(self.selection_layout)
+        layout.addLayout(self.quality_control_row)
         layout.addStretch(1)
         self.setLayout(layout)
 
@@ -170,7 +192,12 @@ class TrajectoryTab(QWidget):
         with h5.File(self.coord_filename, 'r') as f:
             frame_idxs = f['frame_idxs'][:]  
             sidx = np.argsort(frame_idxs)
-            frame_idxs = frame_idxs[sidx]
+            _frame_idxs = frame_idxs[sidx]
+            
+            # Check if frame idxs are sequential
+            if np.prod(np.diff(frame_idxs)) != 1:
+                print('Error: Frame idxs are not sequential. Please check.')
+                return
             
             led_pix_co = {}
             pup_pix_co = f['pup_co'][:][sidx]
@@ -182,15 +209,65 @@ class TrajectoryTab(QWidget):
                 if k in self.mapping['led'].keys():
                     led_pix_co[k] = v[:][sidx]
 
+        index = 0
+        self.ax.clear()
+
+        self.ax.plot(cam_pix_co[index,0], cam_pix_co[index,1], 'o', color='blue')
+        self.ax.plot(pup_pix_co[index,0], pup_pix_co[index,1], 'o', color='green')
+
+        for k,v in led_pix_co.items():
+            self.ax.plot(v[index,0], v[index,1], 'o', color='red')
+
+        self.ax.invert_yaxis()
+        self.canvas.draw()
+
         # Find aberrations and correct
-    
-        # Find theta and phi for each led
+        camera_predictions = {}
+        num_frames = cam_pix_co.shape[0]
+
+        final_trajectories = {}
+        
+        for k,v in led_pix_co.items():
+            dxdy = cam_pix_co-v
+            median_offset = np.median(dxdy, axis=0)
+            camera_predictions[k] = median_offset
+        
+            led_elevation , led_azimuth=  utils.get_led_angle(centered_geometry['leds'][k], basis)
+            print(k, led_elevation, np.rad2deg(led_elevation), led_azimuth, np.rad2deg(led_azimuth))
+
+            led_thetas = []
+            led_phis = []
+
+            for frame in tqdm.tqdm(range(num_frames)):
+
+                led_pix = v[frame]
+                pup_pix = pup_pix_co[frame]
+                cam_pix = led_pix + camera_predictions[k]
+                
+                # Need a grid search here
+                cam_pix[1] -= int(20)
+
+                e,a = utils.calc_gaze_angle(pup_pix, led_pix, cam_pix, [led_elevation, led_azimuth])
+                t,p = utils.ray_trace(centered_geometry, a, e) 
+
+                led_thetas.append(np.pi/2 - t)
+                led_phis.append(p)
+            led_thetas = np.array(led_thetas)
+            led_phis = np.array(led_phis)
+
+            final_trajectories[k] = np.concatenate([led_thetas[:,None], led_phis[:,None]], axis=1)
+
+        with h5.File(self.coord_filename, 'a') as h5_file:
+            if 'raw_trajectories' in h5_file.keys():
+                del h5_file['raw_trajectories']
+            h5_file.create_group('raw_trajectories')
+            for k,v in final_trajectories.items():
+                h5_file['raw_trajectories'][k] = v
 
         # Quality control
 
 
             
-        from IPython import embed; embed()
     def get_centered_geometry(self):
         observer = self.mapping['pupil']
         observer = self.geometry_data[observer]
@@ -213,7 +290,7 @@ class TrajectoryTab(QWidget):
 
 
         centered_coordinates = {}
-        centered_coordinates['pupil'] = observer_geometry - observer_geometry
+        centered_coordinates['observer'] = observer_geometry - observer_geometry
         centered_coordinates['camera'] = camera_geometry - observer_geometry
         centered_coordinates['leds'] = {}
 
