@@ -99,9 +99,8 @@ def load_geometry_json(json_path):
     return objects
 
 
-def get_basis(eye_co):
-
-    _z = eye_co['camera']
+def get_basis(centered_camera_coordinates):
+    _z = centered_camera_coordinates
     _x = np.cross([_z[0], _z[1], 0], [0, 0, -1])
     _x[2] = 0
     _y = np.cross(_x, _z)
@@ -592,16 +591,30 @@ def center_loc(bin_img, center):
 
     return center
 
-def process_ellipse(frame, pup, fids, pupil_params, fid_params):
-    pf, pt, ff, ft = dogs(frame, pupil_params, fid_params)
-    center = find_closest_centroid(pt, 100, pup)
-    pup_loc = pupil_locator(pt, center) #finds edges
-    pxy, width, height, phi = fit(pup_loc) #fits ellipse
+def process_frame(frame, pup, fids, pupil_params, fid_params, ellipse=False):
+    if ellipse:
+        # THIS IS CURRENTLY BRROKEN
+        pf, pt, ff, ft = dogs(frame, pupil_params, fid_params)
+        center = find_closest_centroid(pt, 100, pup)
 
-    final_fid_xys = {} 
-    for k,v in fids.items():
-        final_fid_xys[k] = find_closest_centroid(ft, 100, v)
+        pup_loc = pupil_locator(pt, center) #finds edges
+        pxy, width, height, phi = fit(pup_loc) #fits ellipse
 
+        final_fid_xys = {} 
+        for k,v in fids.items():
+            final_fid_xys[k] = find_closest_centroid(ft, 100, v)
 
+        return pxy, final_fid_xys, width, height, phi
+    else:
+        pf, pt, ff, ft = dogs(frame, pupil_params, fid_params)
+        pxy= find_closest_centroid(pt, 100, pup)
+        final_fid_xys = {} 
+        for k,v in fids.items():
+            final_fid_xys[k] = find_closest_centroid(ft, 100, v)
 
-    return pxy, final_fid_xys, width, height, phi
+        
+        width = None
+        height = None
+        phi = None
+
+        return pxy, final_fid_xys, width, height, phi

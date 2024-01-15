@@ -33,7 +33,6 @@ from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import process_ellipse
 import utils 
 
 
@@ -48,6 +47,12 @@ class TrajectoryTab(QWidget):
         self.coord_path = ""
         self.geo_path = ""
         
+        # Mapping key is image_proc and value is geometry
+        self.mapping = {}
+        self.mapping['led'] = {}
+        self.mapping['camera'] = {}
+        self.mapping['pupil'] = None
+
         self.initUI()
 
     def initUI(self):
@@ -77,26 +82,142 @@ class TrajectoryTab(QWidget):
         # Add lists to selection layout
         self.selection_layout.addWidget(self.image_processing_list)
         self.selection_layout.addWidget(self.geometry_list)
+        
+        # Lock buttons HBox
+        lock_buttons_layout = QVBoxLayout()
+        lock_buttons_layout.setAlignment(Qt.AlignLeft)
+        lock_buttons_layout.setSpacing(10)
+        
+        led_lock_push_button = QPushButton('Lock LED')
+        led_lock_push_button.clicked.connect(lambda: self.update_mapping('led'))
+
+        camera_lock_push_button = QPushButton('Lock Camera')
+        camera_lock_push_button.clicked.connect(lambda: self.update_mapping('camera'))
+
+        pupil_lock_push_button = QPushButton('Lock Pupil')
+        pupil_lock_push_button.clicked.connect(lambda: self.update_mapping('pupil'))
+
+        lock_buttons_layout.addWidget(led_lock_push_button)
+        lock_buttons_layout.addWidget(camera_lock_push_button)
+        lock_buttons_layout.addWidget(pupil_lock_push_button)
+
+        lock_buttons_layout.addStretch(1)
+
+        # Execute button
+        execute_button = QPushButton('Execute')
+        execute_button.clicked.connect(self.execute)
+        lock_buttons_layout.addWidget(execute_button)
+
+
+        self.selection_layout.addLayout(lock_buttons_layout)
+
+        # Add selection layout to main layout
+        layout.addLayout(self.selection_layout)
+        layout.addStretch(1)
+        self.setLayout(layout)
+
 
     def load_coords(self):
+        if self.geometry_filename is None:
+            QMessageBox.warning(self, 'Warning', 'Please select geometry file first.')
+            return
         # Popup window to select file
         self.coord_filename = QFileDialog.getOpenFileName(self, 'Open file', '/home')[0]
         self.coord_label.setText(self.coord_filename)
         
         self.fiducial_coords = {}
-
         with h5.File(self.coord_filename, 'r') as f:
             true_frame_idxs = f['frame_idxs'][:]
-            sorted_frame_idxs = np.argsort(true_frame_idxs)
+            # sorted_frame_idxs = np.argsort(true_frame_idxs)
+
+            self.fiducial_keys = list(f['fiducial_coordinates'].keys())
+        
+        # Populate the lists 
+        self.image_processing_list.clear()
+        self.geometry_list.clear()
+
+        for key in self.fiducial_keys:
+            self.image_processing_list.addItem(key)
+        
+        self.image_processing_list.addItem('pupil')
+
+        self.geometry_data = utils.load_geometry_json(self.geometry_filename)
+        for key in list(self.geometry_data.keys()):
+            self.geometry_list.addItem(key)
+
+    def update_mapping(self, key):
+        # Get the selected items from the lists
+        selected_image_proc_item = self.image_processing_list.selectedItems()[0].text()
+        selected_geometry_item = self.geometry_list.selectedItems()[0].text()
+
+        # Disable the selected items
+        self.image_processing_list.selectedItems()[0].setFlags(Qt.NoItemFlags)
+        self.geometry_list.selectedItems()[0].setFlags(Qt.NoItemFlags)
+
+    
+        if key == 'led':
+            self.mapping['led'][selected_image_proc_item] = selected_geometry_item
+        elif key == 'camera':
+            self.mapping['camera'] = {}
+            self.mapping['camera'][selected_image_proc_item] = selected_geometry_item
+        elif key == 'pupil':
+            self.mapping['pupil'] = selected_geometry_item
+        
+    def execute(self):
+        centered_geometry = self.get_centered_geometry()
+        basis = utils.get_basis(centered_geometry['camera'])
+
+        with h5.File(self.coord_filename, 'r') as f:
+            frame_idxs = f['frame_idxs'][:]  
+            sidx = np.argsort(frame_idxs)
+            frame_idxs = frame_idxs[sidx]
+            
+            led_pix_co = {}
+            pup_pix_co = f['pup_co'][:][sidx]
+
+            temp = list(self.mapping['camera'].keys())[0]
+            cam_pix_co = f['fiducial_coordinates'][temp][:][sidx]
+
+            for k,v in f['fiducial_coordinates'].items():
+                if k in self.mapping['led'].keys():
+                    led_pix_co[k] = v[:][sidx]
+
+        # Find aberrations and correct
+    
+        # Find theta and phi for each led
+
+        # Quality control
 
 
-            self.fiducial_keys = list(f['fiducial_coords'].keys())
+            
+        from IPython import embed; embed()
+    def get_centered_geometry(self):
+        observer = self.mapping['pupil']
+        observer = self.geometry_data[observer]
+        observer_geometry= np.array([observer['x'], observer['y'], observer['z']])
 
-            for key in self.fiducial_keys:
-                self.fiducial_coords[key] = np.array(f['fiducial_coords'][key][:])[sorted_frame_idxs]
+    
+        temp = list(self.mapping['camera'].keys())
+        assert len(temp) == 1
+        camera = self.mapping['camera'][temp[0]]
+        camera = self.geometry_data[camera]
+        camera_geometry = np.array([camera['x'], camera['y'], camera['z']])
 
-            self.fiducial_coords['pupil'] = np.array(f['pup_coords'][:])[sorted_frame_idxs]
+        leds = list(self.mapping['led'].keys())
+        led_geometry = {}
+        for led_name in leds:
+            led = self.mapping['led'][led_name]
+            led = self.geometry_data[led]
+            led = [led['x'], led['y'], led['z']]
+            led_geometry[led_name] = np.array(led)
 
 
+        centered_coordinates = {}
+        centered_coordinates['pupil'] = observer_geometry - observer_geometry
+        centered_coordinates['camera'] = camera_geometry - observer_geometry
+        centered_coordinates['leds'] = {}
 
+        for led_name in leds:
+            centered_coordinates['leds'][led_name] = led_geometry[led_name] - observer_geometry
 
+        return centered_coordinates

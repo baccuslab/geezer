@@ -31,7 +31,7 @@ from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import process_ellipse, load_geometry_json
+from utils import load_geometry_json
 import utils 
 
 

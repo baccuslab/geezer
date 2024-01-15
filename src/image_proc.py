@@ -53,7 +53,7 @@ import cv2
 from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
-from utils import process_ellipse
+from utils import process_frame
 import utils
 from geometry import GeometryTab
 import IPython
@@ -654,19 +654,27 @@ class ImageProcTab(QWidget):
                 ret, frame = video.read()
                 # frame = frame.mean(axis=2)
                 if ret:
-                    frame = frame.mean(axis=2)
-                    _processed_frame = process_ellipse(
-                        frame, pxy, fxys, proc_pup_params, proc_fid_params
-                    )
 
-                    processed_frame = [frame_idx, _processed_frame]
-                    local_results.append(processed_frame)
+                    try:
+                        frame = frame.mean(axis=2)
+                        _processed_frame = process_frame(
+                            frame, pxy, fxys, proc_pup_params, proc_fid_params
+                        )
+                        
+                        error_flag=0 # no error
+                        processed_frame = [frame_idx, _processed_frame, error_flag]
+                        local_results.append(processed_frame)
+                    except:
+                        error_flag=1 # processing error
+                        processed_frame = [frame_idx, False, error_flag]
+                        local_results.append(processed_frame)
                     # # pass
 
                 else:
                     # input("Frame not found {}".format(frame_idx))
                     # print('Frame not found {}'.format(frame_idx))
-                    processed_frame = [frame_idx, False]
+                    error_flag=2 # frame not found
+                    processed_frame = [frame_idx, False, error_flag]
                     local_results.append(processed_frame)
 
             # Append local results to the shared list

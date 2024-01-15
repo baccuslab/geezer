@@ -77,6 +77,7 @@ class TrajectoryTab(QWidget):
         # Add lists to selection layout
         self.selection_layout.addWidget(self.image_processing_list)
         self.selection_layout.addWidget(self.geometry_list)
+    def keyPressEvent(self, event):
 
         # # Columns for Observer, Camera, and LEDs
         # columns = ['Observer', 'Camera', 'LEDs']
