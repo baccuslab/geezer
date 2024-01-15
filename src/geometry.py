@@ -46,7 +46,8 @@ class GeometryTab(QWidget):
         self.toolbar = NavigationToolbar(self.canvas, self)
 
         self.ax = self.figure.add_subplot(111, projection='3d')
-        self.ax.invert_xaxis()
+        self.ax.set_aspect('equal')
+        # self.ax.invert_xaxis()
 
         self.figure.tight_layout()
         
@@ -168,6 +169,7 @@ class GeometryTab(QWidget):
         self.plot_items[row_key] = plot_item
         
         # Refresh the canvas
+        self.ax.set_box_aspect((1, 1, 1))
         self.canvas.draw()
     def save_items(self):
         options = QFileDialog.Options()
@@ -205,6 +207,8 @@ class GeometryTab(QWidget):
         if not filePath:
             return
         
+        self.ax.clear()
+
         with open(filePath, 'r') as file:
             data = json.load(file)
         self.main_window.trajectory_tab.geometry_data = load_geometry_json(filePath)
@@ -216,6 +220,8 @@ class GeometryTab(QWidget):
             plot_item.remove()
 
         self.plot_items.clear()  # Clear the plot items
+
+        self.ax.set_box_aspect((1, 1, 1))
         self.canvas.draw()
         
         for item_data in data:

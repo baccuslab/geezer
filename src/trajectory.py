@@ -147,20 +147,23 @@ class TrajectoryTab(QWidget):
             sidx = np.argsort(frame_idxs)
             frame_idxs = frame_idxs[sidx]
             
-            led_co = [] 
+            led_co = {}
             pup_co = f['pup_co'][:][sidx]
-            for i,(k,v) in enumerate(f['fids_co'].items()):
-                if i==0:
-                    cam_co = v[:][sidx]
+
+            
+            for k,v in f['fiducial_coordinates'].items():
+                if 'cam' in k:
+                    cam_co = v[:][sidx] 
                 else:
-                    led_co.append(v[:][sidx])
+                    led_co[k] = v[:][sidx]
         
         
         cam_preds = {}
-        for led_idx in range(len(led_co)):
-            dxdy = cam_co-led_co[led_idx]
+        
+        for led in list(led_co.keys()):
+            dxdy = cam_co-led_co[led]
             dxdy = np.mean(dxdy,axis=0)
-            cam_preds[led_idx] = dxdy
+            cam_preds[led] = dxdy
         
         thetas = [] 
         phis = [] 
