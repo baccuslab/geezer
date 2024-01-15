@@ -2,6 +2,8 @@ import numpy as np
 import math
 import json
 
+import matplotlib.pyplot as plt
+
 import threading
 import sys 
 import cv2
@@ -19,6 +21,101 @@ from skimage.feature import blob_log
 from skimage import measure
 from scipy.spatial.distance import cdist
 import IPython
+
+def sanitize_fiducial_coordinates(og_led_pix_co, og_cam_pix_co, pix_disp_thresh=15):
+    '''
+    This function takes the fiducial coordinates and removes any outliers, 
+    filling in missing values (beyond some threshold) with the mean of the
+    estimate from other LEDs.
+
+    Use only the LEDs that you wish to use for this estimation in the dict
+
+    Args:
+        og_led_pix_co (dict): Dictionary of LED pixel coordinates
+        og_cam_pix_co (list): List of camera pixel coordinates
+
+    Returns:
+        led_pix_co (dict): Dictionary of LED pixel coordinates
+        cam_pix_co (list): List of camera pixel coordinates
+    '''
+
+    led_pix_co = {}
+    cam_pix_co = {}
+    
+    # Set all times when the LED displacement is greater than some threshold to NaN
+    for k, v in og_led_pix_co.items():
+        xs = v[:,0]
+        ys = v[:,1]
+
+        median_x = np.median(v[:,0])
+        median_y = np.median(v[:,1])
+
+        a = np.where(xs > median_x+pix_disp_thresh)[0]
+        b = np.where(xs < median_x-pix_disp_thresh)[0]
+        c = np.where(ys > median_y+pix_disp_thresh)[0]
+        d = np.where(ys < median_y-pix_disp_thresh)[0]
+        
+        v[a,:] = np.nan
+        v[b,:] = np.nan
+        v[c,:] = np.nan
+        v[d,:] = np.nan
+
+        led_pix_co[k] = v
+
+
+    # Same with camera
+    xs = og_cam_pix_co[:,0]
+    ys = og_cam_pix_co[:,1]
+
+    median_x = np.median(og_cam_pix_co[:,0])
+    median_y = np.median(og_cam_pix_co[:,1])
+
+    a = np.where(xs > median_x+pix_disp_thresh)[0]
+    b = np.where(xs < median_x-pix_disp_thresh)[0]
+    c = np.where(ys > median_y+pix_disp_thresh)[0]
+    d = np.where(ys < median_y-pix_disp_thresh)[0]
+
+    og_cam_pix_co[a,:] = np.nan
+    og_cam_pix_co[b,:] = np.nan
+    og_cam_pix_co[c,:] = np.nan
+    og_cam_pix_co[d,:] = np.nan
+
+    cam_pix_co = og_cam_pix_co
+    
+    # Find times when all LEDs are not NaN
+    # Could do this pairwise, probably should for cam
+    prod = np.ones_like(cam_pix_co)
+
+    for k, v in led_pix_co.items():
+        prod = np.multiply(prod, ~np.isnan(v))
+
+    prod = np.multiply(prod, ~np.isnan(cam_pix_co))
+    all_fiducial_idxs = np.where(prod == True)[0]
+    
+    cam_offsets = {}
+    full_cam_preds = {}
+    filled_cam_preds = {}
+
+    for led in led_pix_co.keys():
+        cam_offsets[led] = cam_pix_co[all_fiducial_idxs, :] - led_pix_co[led][all_fiducial_idxs,:] 
+        
+        full_cam_preds[led]= led_pix_co[led][:,:] + np.median(cam_offsets[led], axis=0)
+        
+        filled_cam_preds[led] = np.where(np.isnan(cam_pix_co), full_cam_preds[led], cam_pix_co)
+    
+    # Average
+    cam_pix_co = np.mean([filled_cam_preds['sw'], filled_cam_preds['se']], axis=0)
+
+
+    # Mechanism for "filling in" missing values using EM, the way we do for cam, but taking
+    # into account multiple expectations and doing pairwise
+
+    # Find times when blinks occur
+
+
+
+
+    return led_pix_co, cam_pix_co
 
 
 def find_closest_centroid(image, threshold_value, point):

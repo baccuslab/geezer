@@ -5,56 +5,61 @@ import utils
 import numpy as np
 import matplotlib.pyplot as plt
 
-with h5.File('/home/dennis/goldroger_geezer_output_debugged.h5', 'r') as file:
+plot_raw_trajectories = True
+clean = True
 
+
+with h5.File('/home/dennis/jbm_goldroger_geezer.h5', 'r') as file:
+    
+    if plot_raw_trajectories:
+        fig, ax = plt.subplots(3,1, sharex=True) 
+
+        ax[0].set_title('thetas')
+        for key in list(file['raw_trajectories'].keys()):
+            out = file['raw_trajectories'][key][:]
+            ax[0].plot(np.rad2deg(out[:,0] - out[120000,0]), label=key)
+        ax[0].legend()
+        print(out.shape)
+        ax[1].set_title('phis')
+        for key in list(file['raw_trajectories'].keys()):
+            out = file['raw_trajectories'][key][:]
             
-    fig, ax = plt.subplots(2,1, sharex=True) 
-    ax[0].set_title('thetas')
-    for key in list(file['raw_trajectories'].keys()):
-        out = file['raw_trajectories'][key][:]
+            zi = out[:,1] - out[30000,1]
+            if key == 'sw':
+                zi *= -1
+                # zi = zi - 2*np.pi
+            ax[1].plot(np.rad2deg(zi)-np.rad2deg(zi[120000]), label=key)
+        ax[1].legend()
+        ax[2].set_title('phis')
+        for key in list(file['raw_trajectories'].keys()):
+            out = file['interp_trajectories'][key][:]
+            
+            zi = out[:,1] - out[30000,1]
+            if key == 'sw':
+                zi *= -1
+                # zi = zi - 2*np.pi
+            ax[2].plot(np.rad2deg(zi)-np.rad2deg(zi[120000]), label=key)
+        ax[2].legend()
 
-        ax[0].plot(np.rad2deg(out[:,0] - out[30000,0]), label=key)
-    ax[0].legend()
-    print(out.shape)
-    ax[1].set_title('phis')
-    for key in list(file['raw_trajectories'].keys()):
-        out = file['raw_trajectories'][key][:]
+
+        plt.show()
         
-        zi = out[:,1] - out[30000,1]
-        if key == 'sw':
-            zi *= -1
-            # zi = zi - 2*np.pi
-        ax[1].plot(np.rad2deg(zi)-np.rad2deg(zi[30000]), label=key)
-    ax[1].legend()
 
-    plt.show()
-    # print(out.shape)
-
-    dist = utils.euclidean_distance(led_pix_co['sw'], led_pix_co['cam'])
-    dist = np.abs(dist - dist[0])
-
-    dist2 = utils.euclidean_distance(led_pix_co['se'], led_pix_co['cam'])
-    dist2 = np.abs(dist2 - dist2[0])
-
-    st = dist > 50
-    st2 = dist2 > 50
+        plt.plot(file['interp_trajectories']['ne'][:,0], 'ko-')
+        
+        
+        fig = plt.gcf()
+        plt.plot(file['raw_trajectories']['ne'][:,0], 'ro-', alpha=0.5)
+        plt.show()
     
-    raw_phis = f['raw_trajectories']['sw'][:,1]
-    raw_phis = np.rad2deg(raw_phis)
+    if clean:
+        # First, find places where LEDs go haywire
+        led_pix_co = {}
 
-    raw_thetas = f['raw_trajectories']['sw'][:,0]
-    raw_thetas = np.rad2deg(raw_thetas)
-
-    raw_phis[st] = np.nan
-    raw_phis[st2] = np.nan
-    raw_thetas[st] = np.nan
-    raw_thetas[st2] = np.nan
-    
-    w = np.diff(raw_phis) > 3
-    w = np.concatenate([w,[False]])
-    raw_phis[w] = np.nan
-
-    nans, x = utils.nan_helper(raw_phis)
-
-    raw_phis[nans]= np.interp(x(nans), x(~nans), raw_phis[~nans])
-
+        led_pix_co['sw'] = file['fiducial_coordinates']['sw'][:]
+        led_pix_co['se'] = file['fiducial_coordinates']['se'][:]
+        led_pix_co['ne'] = file['fiducial_coordinates']['ne'][:]
+        cam_pix_co = file['fiducial_coordinates']['cam'][:]
+        
+        
+        led_pix_co, cam_pix_co = utils.sanitize_fiducial_coordinates(led_pix_co, cam_pix_co)

@@ -123,9 +123,13 @@ class TrajectoryTab(QWidget):
 
         self.quality_control_plot_layout.addWidget(self.toolbar)
         self.quality_control_plot_layout.addWidget(self.canvas)
-
+        
+        self.quality_control_row.addStretch(1)
         self.quality_control_row.addLayout(self.quality_control_plot_layout)
         self.quality_control_row.addStretch(1)
+        
+
+
 
 
 
@@ -167,6 +171,13 @@ class TrajectoryTab(QWidget):
         for key in list(self.geometry_data.keys()):
             self.geometry_list.addItem(key)
 
+            if key in self.fiducial_keys:
+                # select the itme in both lists
+                self.image_processing_list.findItems(key, Qt.MatchExactly)[0].setSelected(True)
+                self.geometry_list.findItems(key, Qt.MatchExactly)[0].setSelected(True)
+                self.update_mapping('led')
+
+
     def update_mapping(self, key):
         # Get the selected items from the lists
         selected_image_proc_item = self.image_processing_list.selectedItems()[0].text()
@@ -188,7 +199,8 @@ class TrajectoryTab(QWidget):
     def execute(self):
         centered_geometry = self.get_centered_geometry()
         basis = utils.get_basis(centered_geometry['camera'])
-
+        
+        # First, we sanitize the fiducial coordinates
         with h5.File(self.coord_filename, 'r') as f:
             frame_idxs = f['frame_idxs'][:]  
             sidx = np.argsort(frame_idxs)
@@ -209,6 +221,8 @@ class TrajectoryTab(QWidget):
                 if k in self.mapping['led'].keys():
                     led_pix_co[k] = v[:][sidx]
 
+        led_pix_co, cam_pix_co = utils.sanitize_fiducial_coordinates(led_pix_co, cam_pix_co) 
+
         index = 0
         self.ax.clear()
 
@@ -222,18 +236,14 @@ class TrajectoryTab(QWidget):
         self.canvas.draw()
 
         # Find aberrations and correct
-        camera_predictions = {}
         num_frames = cam_pix_co.shape[0]
 
-        final_trajectories = {}
+        raw_final_trajectories = {}
+        interp_final_trajectories = {}
+        
         
         for k,v in led_pix_co.items():
-            dxdy = cam_pix_co-v
-            median_offset = np.median(dxdy, axis=0)
-            camera_predictions[k] = median_offset
-        
             led_elevation , led_azimuth=  utils.get_led_angle(centered_geometry['leds'][k], basis)
-            print(k, led_elevation, np.rad2deg(led_elevation), led_azimuth, np.rad2deg(led_azimuth))
 
             led_thetas = []
             led_phis = []
@@ -242,27 +252,48 @@ class TrajectoryTab(QWidget):
 
                 led_pix = v[frame]
                 pup_pix = pup_pix_co[frame]
-                cam_pix = led_pix + camera_predictions[k]
-                
+                cam_pix = cam_pix_co[frame] 
+
                 # Need a grid search here
-                cam_pix[1] -= int(20)
+                # cam_pix[1] += int(10)
 
                 e,a = utils.calc_gaze_angle(pup_pix, led_pix, cam_pix, [led_elevation, led_azimuth])
                 t,p = utils.ray_trace(centered_geometry, a, e) 
 
                 led_thetas.append(np.pi/2 - t)
                 led_phis.append(p)
-            led_thetas = np.array(led_thetas)
-            led_phis = np.array(led_phis)
 
-            final_trajectories[k] = np.concatenate([led_thetas[:,None], led_phis[:,None]], axis=1)
+
+            raw_led_thetas = np.array(led_thetas)
+            raw_led_phis = np.array(led_phis)
+
+            led_thetas = np.array(led_thetas)
+            led_phis= np.array(led_phis)
+            
+
+            # interpolate through the missing values
+            nans, x = utils.nan_helper(led_thetas)
+            led_thetas[nans]= np.interp(x(nans), x(~nans), led_thetas[~nans])
+
+            nans, x = utils.nan_helper(led_phis)
+            led_phis[nans]= np.interp(x(nans), x(~nans), led_phis[~nans])
+
+            raw_final_trajectories[k] = np.concatenate([raw_led_thetas[:,None], raw_led_phis[:,None]], axis=1)
+            interp_final_trajectories[k] = np.concatenate([led_thetas[:,None], led_phis[:,None]], axis=1)
 
         with h5.File(self.coord_filename, 'a') as h5_file:
             if 'raw_trajectories' in h5_file.keys():
                 del h5_file['raw_trajectories']
             h5_file.create_group('raw_trajectories')
-            for k,v in final_trajectories.items():
+
+            for k,v in raw_final_trajectories.items():
                 h5_file['raw_trajectories'][k] = v
+
+            if 'interp_trajectories' in h5_file.keys():
+                del h5_file['interp_trajectories']
+            h5_file.create_group('interp_trajectories')
+            for k,v in interp_final_trajectories.items():
+                h5_file['interp_trajectories'][k] = v
 
         # Quality control
 

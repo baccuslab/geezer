@@ -218,33 +218,33 @@ class TrajectoryTab(QWidget):
     #     cleaned_up_thetas = {}
     #     for ii,led in enumerate(['ne','nw', 'se', 'sw']):
     #         try:
-    #             sw = phis[ii] 
-    #             sw = np.rad2deg(sw)
-    #             sw = sw - sw[20000]
-    #             # plt.plot(sw,'r')
-    #             # plt.show()
+                sw = phis[ii] 
+                sw = np.rad2deg(sw)
+                sw = sw - sw[20000]
+                # plt.plot(sw,'r')
+                # plt.show()
 
-    #             sw[e] = np.nan
-    #             sw[ee] = np.nan
+                sw[e] = np.nan
+                sw[ee] = np.nan
 
-    #             # w = np.diff(sw) > 3 
-    #             # w = np.concatenate([w,[False]])
-    #             # sw[w] = np.nan
-    #             # y = sw
-    #             sw[e] = np.nan
-    #             sw[ee] = np.nan
-    #             nans, x = utils.nan_helper(sw)
-    #             print('nans', nans.shape)
-    #             # # interpolate with scipy
+                # w = np.diff(sw) > 3 
+                # w = np.concatenate([w,[False]])
+                # sw[w] = np.nan
+                # y = sw
+                sw[e] = np.nan
+                sw[ee] = np.nan
+                nans, x = utils.nan_helper(sw)
+                print('nans', nans.shape)
+                # # interpolate with scipy
 
-    #             # w = np.diff(sw) > 5
-    #             # sw[:-1][w] = np.nan
-    #             # nans, x = utils.nan_helper(sw)
-    #             sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
-    #             # plt.plot(sw,'r')
-    #             # plt.show()
+                # w = np.diff(sw) > 5
+                # sw[:-1][w] = np.nan
+                # nans, x = utils.nan_helper(sw)
+                sw[nans]= np.interp(x(nans), x(~nans), sw[~nans])
+                # plt.plot(sw,'r')
+                # plt.show()
 
-    #             w = np.abs(np.diff(sw)) > 1 
+                w = np.abs(np.diff(sw)) > 1 
     #             sw[1:][w] = np.nan
 
     #             sw[sw > 20] = np.nan
