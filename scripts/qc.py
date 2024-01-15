@@ -1,45 +1,33 @@
 import h5py as h5
 import sys
+sys.path.append('/home/dennis/Code/geezer/src/')
 import utils
 import numpy as np
 import matplotlib.pyplot as plt
 
-with h5.File('/home/dennis/goldroger_geezer_output_debugged.h5', 'r') as f:
-    frame_idxs = f['frame_idxs'][:]  
-    sidx = np.argsort(frame_idxs)
-    _frame_idxs = frame_idxs[sidx]
-    
-    # Check if frame idxs are sequential
-    
-    led_pix_co = {}
-    pup_pix_co = f['pup_co'][:][sidx]
-
-    cam_pix_co = f['fiducial_coordinates']['cam'][:][sidx]
-
-    for k,v in f['fiducial_coordinates'].items():
-        led_pix_co[k] = v[:][sidx]
+with h5.File('/home/dennis/goldroger_geezer_output_debugged.h5', 'r') as file:
 
             
-    # fig, ax = plt.subplots(2,1, sharex=True) 
-    # ax[0].set_title('thetas')
-    # for key in list(file['raw_trajectories'].keys()):
-    #     out = file['raw_trajectories'][key][:]
+    fig, ax = plt.subplots(2,1, sharex=True) 
+    ax[0].set_title('thetas')
+    for key in list(file['raw_trajectories'].keys()):
+        out = file['raw_trajectories'][key][:]
 
-    #     ax[0].plot(np.rad2deg(out[:,0] - out[30000,0]), label=key)
-    # ax[0].legend()
-    # print(out.shape)
-    # ax[1].set_title('phis')
-    # for key in list(file['raw_trajectories'].keys()):
-    #     out = file['raw_trajectories'][key][:]
+        ax[0].plot(np.rad2deg(out[:,0] - out[30000,0]), label=key)
+    ax[0].legend()
+    print(out.shape)
+    ax[1].set_title('phis')
+    for key in list(file['raw_trajectories'].keys()):
+        out = file['raw_trajectories'][key][:]
         
-    #     zi = out[:,1] - out[30000,1]
-    #     if key == 'sw':
-    #         zi *= -1
-    #         # zi = zi - 2*np.pi
-    #     ax[1].plot(np.rad2deg(zi)-np.rad2deg(zi[30000]), label=key)
-    # ax[1].legend()
+        zi = out[:,1] - out[30000,1]
+        if key == 'sw':
+            zi *= -1
+            # zi = zi - 2*np.pi
+        ax[1].plot(np.rad2deg(zi)-np.rad2deg(zi[30000]), label=key)
+    ax[1].legend()
 
-    # plt.show()
+    plt.show()
     # print(out.shape)
 
     dist = utils.euclidean_distance(led_pix_co['sw'], led_pix_co['cam'])
