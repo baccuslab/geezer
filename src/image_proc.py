@@ -444,6 +444,11 @@ class ImageProcTab(QWidget):
         fid_name, ok = QInputDialog.getText(
             self, "Input Dialog", "Enter fiducial name:"
         )
+
+        if 'pup' in fid_name:
+            print('Cannot use pup as a fiducial name')
+            return
+
         self.fiducial_coordinates[fid_name] = self.last_co
         self.update_frame()
 
@@ -470,14 +475,18 @@ class ImageProcTab(QWidget):
 
 
         if self.video is None:
+            print('No video loaded')
             return
 
         self.frame_enter.setText(str(self.current_frame))
         self.frame_slider.setValue(self.current_frame)
 
         if self.video.get(cv2.CAP_PROP_POS_FRAMES) != self.current_frame:
+            print("Setting frame")
             self.video.set(cv2.CAP_PROP_POS_FRAMES, self.current_frame)
+
         ret, frame = self.video.read()
+        print(self.current_frame, ret)
         frame = frame.mean(axis=2)
 
         pp, fp = self.get_params()
@@ -643,16 +652,21 @@ class ImageProcTab(QWidget):
             for frame_idx in tqdm.tqdm(range(start_frame, end_frame)):
                 video.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
                 ret, frame = video.read()
-                frame = frame.mean(axis=2)
+                # frame = frame.mean(axis=2)
                 if ret:
+                    frame = frame.mean(axis=2)
                     _processed_frame = process_ellipse(
                         frame, pxy, fxys, proc_pup_params, proc_fid_params
                     )
 
-
                     processed_frame = [frame_idx, _processed_frame]
-                    
-                    [print(type(pp)) for pp in processed_frame]
+                    local_results.append(processed_frame)
+                    # # pass
+
+                else:
+                    # input("Frame not found {}".format(frame_idx))
+                    # print('Frame not found {}'.format(frame_idx))
+                    processed_frame = [frame_idx, False]
                     local_results.append(processed_frame)
 
             # Append local results to the shared list
@@ -680,6 +694,11 @@ class ImageProcTab(QWidget):
 
         # Convert the shared list to a regular list
         results = list(result_list)
+
+
+        from IPython import embed
+        embed()
+
         print(len(results))
         save_frame_idxs = np.array([x[0] for x in results])
         save_pupil_co = np.array([x[1][0] for x in results])
