@@ -704,15 +704,11 @@ class ImageProcTab(QWidget):
         results = list(result_list)
 
 
-        from IPython import embed
-        embed()
-
-        print(len(results))
         save_frame_idxs = np.array([x[0] for x in results])
         save_pupil_co = np.array([x[1][0] for x in results])
-        save_widths = np.array([x[1][2] for x in results])
-        save_heights = np.array([x[1][3] for x in results])
-        save_phis = np.array([x[1][4] for x in results])
+        # save_widths = np.array([x[1][2] for x in results])
+        # save_heights = np.array([x[1][3] for x in results])
+        # save_phis = np.array([x[1][4] for x in results])
         save_fiducial_coordinates = {}
         
 
@@ -730,9 +726,9 @@ class ImageProcTab(QWidget):
             save_pupil_co = np.array(save_pupil_co)[sidx]
             f.create_dataset("pup_co", data=save_pupil_co)
 
-            f.create_dataset("width", data=save_widths[sidx])
-            f.create_dataset("height", data=save_heights[sidx])
-            f.create_dataset("phi", data=save_phis[sidx])
+            # f.create_dataset("width", data=save_widths[sidx])
+            # f.create_dataset("height", data=save_heights[sidx])
+            # f.create_dataset("phi", data=save_phis[sidx])
 
             f.create_group("fiducial_coordinates")
             for fiducial_name in fiducials_names:
