@@ -733,8 +733,10 @@ class ImageProcTab(QWidget):
             f.create_group("fiducial_coordinates")
             for fiducial_name in fiducials_names:
                 f.create_dataset("fiducial_coordinates/{}".format(fiducial_name), data=save_fiducial_coordinates[fiducial_name][sidx])
-
-            f.create_dataset("meta", data=json.dumps(meta))
+            
+            f.create_group("meta")
+            for k,v in meta.items(): 
+                f["meta"].attrs[k] = v
 
         # Close the video file
         _video.release()

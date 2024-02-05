@@ -197,6 +197,8 @@ class TrajectoryTab(QWidget):
             self.mapping['pupil'] = selected_geometry_item
         
     def execute(self):
+        print(self.mapping)
+        print('_)_')
         centered_geometry = self.get_centered_geometry()
         basis = utils.get_basis(centered_geometry['camera'])
         
@@ -263,7 +265,7 @@ class TrajectoryTab(QWidget):
                 led_thetas.append(np.pi/2 - t)
                 led_phis.append(p)
 
-
+            from IPython import embed; embed()
             raw_led_thetas = np.array(led_thetas)
             raw_led_phis = np.array(led_phis)
 
