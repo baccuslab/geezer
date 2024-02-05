@@ -200,6 +200,7 @@ class ImageProcTab(QWidget):
 
         self.pupil_co = None
         self.fiducial_coordinates = {}
+        self.fiducial_reference_frames = {}
         self.selected_fiducial = None
 
         self.coordinate_file = None
@@ -450,6 +451,7 @@ class ImageProcTab(QWidget):
             return
 
         self.fiducial_coordinates[fid_name] = self.last_co
+        self.fiducial_reference_frames[fid_name] = self.current_frame
         self.update_frame()
 
     def slider_changed(self):
@@ -611,6 +613,9 @@ class ImageProcTab(QWidget):
         if self.h5_filename == "":
             return
 
+        if self.h5_filename[-3:] != ".h5":
+            self.h5_filename += ".h5"
+
         _video = cv2.VideoCapture(self.mp4_filename)
         meta = {}
         start_frame = int(self.start_frame_process_edit.text())
@@ -733,7 +738,7 @@ class ImageProcTab(QWidget):
             f.create_group("fiducial_coordinates")
             for fiducial_name in fiducials_names:
                 f.create_dataset("fiducial_coordinates/{}".format(fiducial_name), data=save_fiducial_coordinates[fiducial_name][sidx])
-            
+                f["fiducial_coordinates/{}".format(fiducial_name)].attrs["reference_frame"] = self.fiducial_reference_frames[fiducial_name] 
             f.create_group("meta")
             for k,v in meta.items(): 
                 f["meta"].attrs[k] = v

@@ -10,7 +10,7 @@ import sys
 sys.path.append('/home/dennis/Code/geezer/src/')
 import utils
 
-geezer_file = '/home/dennis/Data/data_3/imu/imu_geezer_output.h5'
+geezer_file = '/home/dennis/Data/data_3/imu/imu_geezer_output_round_2.h5'
 
 # %%
 fid_co = {}
@@ -96,6 +96,11 @@ basis = utils.get_basis(centered_geometry['camera'])
 
 # # %% 
 with h5.File(geezer_file, 'r') as f:
+    print(f['meta'].attrs['fid_params'])
+# %%
+
+led_pix_co = {}
+with h5.File(geezer_file, 'r') as f:
     frame_idxs = f['frame_idxs'][:]  
     sidx = np.argsort(frame_idxs)
     
@@ -120,6 +125,10 @@ def euclidean_distance(a, b):
 def windowed_mean(x, window_size):
     return np.convolve(x, np.ones(window_size)/window_size, mode='same')
 
+# DISTINGUISH BETWEEN BLINKS AND MOTION
+
+# GRID SEARCH OVER CAM OFFSETS FOR TRAJECTORY
+
 se_co = led_pix_co['se']
 sw_co = led_pix_co['sw']
 se_prediction = led_pix_co['sw']+se_estimate
@@ -137,6 +146,17 @@ print(avg_se_co.shape)
 
 
 plt.hist(residuals, bins=100)
+plt.show()
+
+fig, ax = plt.subplots(2,1, sharex=True)
+ax[0].plot(se_co[:,0], 'k', label='se')
+ax[0].plot(se_prediction[:,0], 'r', label='se_prediction')
+ax[0].set_title('fiducials')
+ax[1].plot(euclidean_distance(se_co, se_prediction), 'k', label='se_residual')
+ax[1].plot(euclidean_distance(sw_co, se_co), 'r', label='inter_led_residual')
+ax[1].set_title('residuals')
+ax[1].set_title('led_dist')
+ax[0].legend()
 plt.show()
 
 low = residuals < 40 
