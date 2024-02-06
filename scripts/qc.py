@@ -1,6 +1,6 @@
 import h5py as h5
 import sys
-sys.path.append('/home/dennis/Code/geezer/src/')
+sys.path.append('/home/melandrocyte/Code/geezer/src/')
 import utils
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,8 +10,9 @@ clean = True
 
 
 # with h5.File('/home/dennis/Data/data_1/GolDRoger/goldroger_geezer.h5', 'r') as file:
-with h5.File('/home/dennis/Data/data_3/imu/imu_geezer_output.h5', 'r') as file:
-    print(file.keys())
+with h5.File('/home/melandrocyte/imu_geezer_output_round_2.h5', 'r') as file:
+    plt.plot(file['interp_trajectories']['sw'][:,0])
+    plt.show()
     # if plot_raw_trajectories:
     #     fig, ax = plt.subplots(3,1, sharex=True) 
 

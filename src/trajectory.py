@@ -232,6 +232,7 @@ class TrajectoryTab(QWidget):
         self.ax.plot(pup_pix_co[index,0], pup_pix_co[index,1], 'o', color='green')
 
         for k,v in led_pix_co.items():
+            print(k)
             self.ax.plot(v[index,0], v[index,1], 'o', color='red')
 
         self.ax.invert_yaxis()
@@ -245,7 +246,9 @@ class TrajectoryTab(QWidget):
         
         
         for k,v in led_pix_co.items():
-            led_elevation , led_azimuth=  utils.get_led_angle(centered_geometry['leds'][k], basis)
+            if k == 'ne':
+                continue
+            led_elevation , led_azimuth=  utils.get_led_angle(centered_geometry['leds'][k][:], basis)
 
             led_thetas = []
             led_phis = []
@@ -265,7 +268,6 @@ class TrajectoryTab(QWidget):
                 led_thetas.append(np.pi/2 - t)
                 led_phis.append(p)
 
-            from IPython import embed; embed()
             raw_led_thetas = np.array(led_thetas)
             raw_led_phis = np.array(led_phis)
 

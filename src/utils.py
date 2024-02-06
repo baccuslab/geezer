@@ -22,6 +22,12 @@ from skimage import measure
 from scipy.spatial.distance import cdist
 import IPython
 
+def euclidean_distance(a, b):
+    return np.sqrt(np.sum((a-b)**2, axis=1))
+
+def windowed_mean(x, window_size):
+    return np.convolve(x, np.ones(window_size)/window_size, mode='same')
+
 def sanitize_fiducial_coordinates(og_led_pix_co, og_cam_pix_co, pix_disp_thresh=15):
     '''
     This function takes the fiducial coordinates and removes any outliers, 
@@ -54,6 +60,8 @@ def sanitize_fiducial_coordinates(og_led_pix_co, og_cam_pix_co, pix_disp_thresh=
         b = np.where(xs < median_x-pix_disp_thresh)[0]
         c = np.where(ys > median_y+pix_disp_thresh)[0]
         d = np.where(ys < median_y-pix_disp_thresh)[0]
+
+        print(a)
         
         v[a,:] = np.nan
         v[b,:] = np.nan
@@ -61,6 +69,7 @@ def sanitize_fiducial_coordinates(og_led_pix_co, og_cam_pix_co, pix_disp_thresh=
         v[d,:] = np.nan
 
         led_pix_co[k] = v
+
 
 
     # Same with camera
@@ -220,7 +229,7 @@ def get_led_angle(led_co, basis):
     
     return el, az
 
-def calc_gaze_angle(pupil_co, led_co, cam_co, led_angles):
+def calc_gaze_angle(pupil_co, led_co, cam_co, led_angles, offset=[0,0]):
     px = pupil_co[0]
     py = pupil_co[1]
 
@@ -715,4 +724,35 @@ def process_frame(frame, pup, fids, pupil_params, fid_params, ellipse=False):
         phi = None
 
         return pxy, final_fid_xys, width, height, phi
+
+def get_centered_geometry(geometry_data, mapping):
+    observer = mapping['pupil']
+    observer = geometry_data[observer]
+    observer_geometry= np.array([observer['x'], observer['y'], observer['z']])
+
+
+    temp = list(mapping['camera'].keys())
+    assert len(temp) == 1
+    camera = mapping['camera'][temp[0]]
+    camera = geometry_data[camera]
+    camera_geometry = np.array([camera['x'], camera['y'], camera['z']])
+
+    leds = list(mapping['led'].keys())
+    led_geometry = {}
+    for led_name in leds:
+        led = mapping['led'][led_name]
+        led = geometry_data[led]
+        led = [led['x'], led['y'], led['z']]
+        led_geometry[led_name] = np.array(led)
+
+
+    centered_coordinates = {}
+    centered_coordinates['observer'] = observer_geometry - observer_geometry
+    centered_coordinates['camera'] = camera_geometry - observer_geometry
+    centered_coordinates['leds'] = {}
+
+    for led_name in leds:
+        centered_coordinates['leds'][led_name] = led_geometry[led_name] - observer_geometry
+
+    return centered_coordinates
 

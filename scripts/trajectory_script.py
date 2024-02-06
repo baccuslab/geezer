@@ -1,5 +1,3 @@
-%load_ext autoreload
-%autoreload 2
 
 # %%
 import h5py as h5
@@ -7,10 +5,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
-sys.path.append('/home/dennis/Code/geezer/src/')
+sys.path.append('/home/melandrocyte/Code/geezer/src/')
 import utils
 
-geezer_file = '/home/dennis/Data/data_3/imu/imu_geezer_output_round_2.h5'
+geezer_file = '/home/melandrocyte/imu_geezer_output_round_2.h5'
 
 # %%
 fid_co = {}
@@ -49,7 +47,7 @@ for led in leds_to_use:
 se_estimate = reference_positions['se'] - reference_positions['sw']
 sw_estimate = reference_positions['sw'] - reference_positions['se']
 
-geometry_data = utils.load_geometry_json('/home/dennis/Code/geezer/geometries/jan_2024_geometry.json')
+geometry_data = utils.load_geometry_json('/home/melandrocyte/Code/geezer/geometries/jan_2024_geometry.json')
 
 mapping = {'led':
         {'ne': 'ne',
