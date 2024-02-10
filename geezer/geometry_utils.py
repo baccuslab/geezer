@@ -64,7 +64,8 @@ def get_basis(centered_camera_coordinates):
 
 def get_led_angle(led_co, basis):
     tx,ty,tz = led_co @ np.linalg.inv(basis)
-    
+
+
     el = np.arctan(ty / np.sqrt(tx**2 + tz**2))
     az = np.arctan(tx / tz)
     
