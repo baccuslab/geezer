@@ -61,15 +61,17 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget(self)
         self.setCentralWidget(self.tabs)
 
+        self.imageproc_tab = ImageProcTab(self)
         self.geometry_tab = GeometryTab(self)
-        self.trajectory_tab = TrajectoryTab(self)
+
         self.curate_tab = CurateTab(self)
         self.imageproc_tab = ImageProcTab(self)
+        # self.trajectory_tab = TrajectoryTab(self)
 
         self.tabs.addTab(self.imageproc_tab, "Centroids")
         self.tabs.addTab(self.geometry_tab, "Geometry")
-        self.tabs.addTab(self.trajectory_tab, "Trajectory")
-        self.tabs.addTab(self.curate_tab, "Curate")
+        # self.tabs.addTab(self.trajectory_tab, "Trajectory")
+        # self.tabs.addTab(self.curate_tab, "Curate")
 
         self.tabs.currentChanged.connect(self.tab_changed)
 
