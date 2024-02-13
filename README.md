@@ -56,8 +56,9 @@ Roughly, the algorithm for both the pupils and the fiducials is something like:
 * For a computer with 256 cores, running with 100 processes is very efficient. Doing so on a laptop will result in the whole OS crashing. Choose wisely * 
 - Hit the `Process` button and wait
 
-
+### Validation
 
 ![basis](img/basis.png)
 
+This is an image of the camera LEDs and the camera and represents the correct basis that image-coordinates are computed-in (r,g,b lines) and demonstrates the proper angular coordinates of the LED angles (yellow)
 
