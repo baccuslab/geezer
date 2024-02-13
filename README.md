@@ -58,6 +58,6 @@ Roughly, the algorithm for both the pupils and the fiducials is something like:
 
 
 
-
+![basis](img/basis.png)
 
 

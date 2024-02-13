@@ -24,7 +24,6 @@ class Trajectory:
         self.led_angles = {}
 
         for led_id in self.led_ids:
-            print(led_id)
             led_centered_coordinates = self.centered_geometry['leds'][led_id]
             led_el, led_az = calculate_led_angles(led_centered_coordinates, self.cam_basis)
             self.led_angles[led_id] = [led_el, led_az]
@@ -37,8 +36,7 @@ class Trajectory:
         axis.plot(*self.centered_geometry['camera'], 'ro')
         axis.plot(*self.centered_geometry['observer'], 'go')
 
-        for k,v in self.centered_geometry['leds'].items():
-            axis.plot(*v, 'ko')
+
 
         axis.set_xlabel('X', fontsize=20)
         axis.set_ylabel('Y', fontsize=20)
@@ -53,13 +51,7 @@ class Trajectory:
         z = [[0, val] for val in self.cam_basis[2]]
         z = np.array(z) * 30
         
-        axis.set(xlim=(-30, 30), ylim=(-30, 30), zlim=(-30, 30))
-        axis.plot(*x, 'r')
-        axis.plot(*y, 'g')
-        axis.plot(*z, 'b')
-        axis.plot(*self.cam_basis[0], 'ko')
-        axis.plot(*self.cam_basis[1], 'ko')
-        axis.plot(*self.cam_basis[2], 'ko')
+
 
         axis.set_aspect('auto')
         
@@ -73,8 +65,18 @@ class Trajectory:
             temp = np.matmul(temp, self.cam_basis)
 
 
-            axis.plot([0, temp[0]], [0, temp[1]], [0, temp[2]], 'y', linewidth=1, alpha=0.5)
+            axis.plot([0, temp[0]], [0, temp[1]], [0, temp[2]], 'y', linewidth=1)
 
+        axis.set(xlim=(-30, 30), ylim=(-30, 30), zlim=(-30, 30))
+        axis.plot(*x, 'r')
+        axis.plot(*y, 'g')
+        axis.plot(*z, 'b')
+        axis.plot(*self.cam_basis[0], 'ko')
+        axis.plot(*self.cam_basis[1], 'ko')
+        axis.plot(*self.cam_basis[2], 'ko')
+
+        for k,v in self.centered_geometry['leds'].items():
+            axis.plot(*v, 'ro', markersize=10)
 
         plt.show()
 
