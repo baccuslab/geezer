@@ -1,4 +1,5 @@
 import json
+import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 import h5py as h5
@@ -29,7 +30,73 @@ class Trajectory:
             self.led_angles[led_id] = [led_el, led_az]
         
         self.plot_cam_basis()
-        # self.best_offset = self.find_best_offset(reference_frame)
+        self.offsets= {}
+        for led_id in self.led_ids:
+            self.offsets[led_id] = self.coordinate_grid_search(2200, led_id)
+
+
+    def coordinate_grid_search(self, reference_frame, reference_led='se', num_offsets=150):
+        num_predicted_leds = len(self.led_ids) - 1
+
+        distances = {}
+
+        for predict_led in self.led_ids:
+            if predict_led == reference_led:
+                continue
+            distances[predict_led] = np.zeros((num_offsets*2, num_offsets*2))
+        
+        x_offsets = np.arange(-num_offsets,num_offsets)
+        y_offsets = np.arange(-num_offsets,num_offsets)
+        
+
+        for xi in tqdm.tqdm(x_offsets):
+            for yi in y_offsets:
+                offset = [xi,yi]
+                
+                for predict_led in self.led_ids:
+                        if predict_led == reference_led:
+                            continue
+
+                        predicted_led_co = self.h5_file['fiducial_coordinates'][predict_led][reference_frame]
+                        fiducial_co = self.h5_file['fiducial_coordinates'][reference_led][reference_frame]
+                        camera_co = self.h5_file['fiducial_coordinates']['cam'][reference_frame]
+
+
+                        p_elevation, p_azimuth = calculate_gaze_angles(predicted_led_co, fiducial_co, camera_co, self.led_angles[reference_led], offset=offset)
+
+                        t_elevation, t_azimuth = self.led_angles[predict_led] 
+                        elevation_distance = circular_mmse(p_elevation, t_elevation)
+                        azimuth_distance = circular_mmse(p_azimuth, t_azimuth)
+
+
+                        distances[predict_led][xi+num_offsets,yi+num_offsets] = azimuth_distance
+        
+        best_offsets = {}
+
+
+        for k,v in distances.items():
+            # print(k, np.nanmin(v))
+            plt.imshow(v)
+            plt.title(k)
+            plt.colorbar()
+            plt.show()
+
+            w = np.where(v == np.nanmin(v))
+            best_offsets[k] = [x_offsets[w[0][0]], y_offsets[w[1][0]]]
+
+            info = 'Reference: {}\nPredicted: {}\nOffsets: {}\nDistance: {}'.format(reference_led, k, best_offsets[k], np.nanmin(v)) 
+            
+            print(info)
+            print('-------------------')
+        
+        return best_offsets
+                
+
+                
+
+
+
+
 
     def plot_cam_basis(self, basis_check='ne'):
         axis = plt.axes(projection='3d')
@@ -80,48 +147,10 @@ class Trajectory:
 
         plt.show()
 
-         
-
-    # def find_best_offset(self, reference_frame, num_offsets=50):
-    #     distance_mtx = np.zeros((num_offsets*2, num_offsets*2))
-    #     for i in np.arange(-num_offsets,num_offsets):
-    #         for j in np.arange(-num_offsets,num_offsets):
-    #             offset = [i,j]
-    #             for predict_led in ['sw', 'se']:
-    #                 for reference_led in ['sw', 'se']:
-    #                     if predict_led == reference_led:
-    #                         continue
-
-    #                     predicted_led_co = self.h5_file['fiducial_coordinates'][predict_led][reference_frame]
-    #                     fiducial_co = self.h5_file['fiducial_coordinates'][reference_led][reference_frame]
-    #                     camera_co = self.h5_file['fiducial_coordinates']['cam'][reference_frame]
-
-
-    #                     p_elevation, p_azimuth = calculate_gaze_angles(predicted_led_co, fiducial_co, camera_co, self.led_angles[reference_led], offset=offset)
-
-    #                     true = np.rad2deg(self.led_angles[predict_led])
-    #                     estimate = np.rad2deg([p_elevation, p_azimuth])*2
-                        
-# #                         # Compute euclidean distance
-    #                     distance = np.sqrt(np.sum((true - estimate)**2))
-    #                     if distance == np.nan:
-    #                         print(i,j)
-    #                     distance_mtx[i+num_offsets,j+num_offsets] = distance
-
-    #     plt.imshow(distance_mtx)
-    #     plt.colorbar()
-    #     plt.show()
-
-    #     w = np.where(distance_mtx == np.nanmin(distance_mtx))
-# #         print(w)
-# #         xoffsets = np.arange(-num_offsets,num_offsets)
-# #         yoffsets = np.arange(-num_offsets,num_offsets)
-
-# #         best_offset = [xoffsets[w[0][0]], yoffsets[w[1][0]]]
-# #         print(best_offset)
-
-                
-
-                
+    
+def circular_mmse(a,b):
+    diff = np.angle(np.exp(1j * (a - b)))
+    mse = np.mean(np.square(diff))
+    return mse
 
 
