@@ -32,9 +32,8 @@ from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
 
-import utils 
 
-from geometry import GeometryTab
+from geezer.gui.geometry import GeometryTab
 
 # rcParams: set default so that axis isn't shown and no x or yticks
 plt.rcParams['axes.axisbelow'] = False

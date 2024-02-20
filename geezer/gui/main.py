@@ -34,10 +34,9 @@ import multiprocessing
 # from utils import process_frame
 # import utils 
 
-from geometry import GeometryTab
-from trajectory import TrajectoryTab
-from curate import CurateTab
-from image_proc import ImageProcTab
+from geezer.gui.geometry import GeometryTab
+from geezer.gui.curate import CurateTab
+from geezer.gui.image_proc import ImageProcTab
 
 
 # rcParams: set default so that axis isn't shown and no x or yticks

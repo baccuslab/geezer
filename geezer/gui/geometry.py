@@ -31,8 +31,7 @@ from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import load_geometry_json
-import utils 
+from geezer import load_geometry_json
 
 
 class GeometryTab(QWidget):
