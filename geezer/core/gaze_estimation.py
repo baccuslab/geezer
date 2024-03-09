@@ -1,4 +1,5 @@
 import numpy as np
+import geezer
 import math
 import tqdm
 import matplotlib.pyplot as plt
@@ -147,6 +148,88 @@ def calculate_gaze_trajectory(pupil_co, led_co, cam_co, led_angles, offset=[0,0]
 
     return gaze_angles
 
+def sanitize_trajectory(trajectory, thresh=[10,30], d_thresh=2, window_size=10):
+    elevation = trajectory[:,0]
+    azimuth = trajectory[:,1]
+
+    thresh = np.deg2rad(thresh)
+    d_thresh = np.deg2rad(d_thresh)
+
+    e = np.copy(elevation)
+
+    a = np.copy(azimuth)
+
+    fig,ax= plt.subplots(5,1, sharex=True)
+    ax[0].plot(a, 'k')
+
+    e_median = np.nanmedian(e)
+    a_median = np.nanmedian(a)
+
+    e_gt = np.where(e > e_median+thresh[0])[0]
+    e_lt = np.where(e < e_median-thresh[0])[0]
+    a_gt= np.where(a > a_median+thresh[1])[0]
+    a_lt = np.where(a < a_median-thresh[1])[0]
+
+    e[e_gt] = np.nan
+    e[e_lt] = np.nan
+    e[a_gt] = np.nan
+    e[a_lt] = np.nan
+
+    a[e_gt] = np.nan
+    a[e_lt] = np.nan
+    a[a_gt] = np.nan
+    a[a_lt] = np.nan
+    
+    ax[1].plot(a, 'r', ls='--')
+
+
+    e_dthresh_violations = np.abs(np.diff(elevation)) > d_thresh 
+    a_dthresh_violations = np.abs(np.diff(azimuth)) > d_thresh 
+
+    dthresh_violations = e_dthresh_violations + a_dthresh_violations
+
+    dthresh_violations = dthresh_violations > 0
+    dthresh_violations = np.append(False, dthresh_violations)
+
+    a[dthresh_violations] = np.nan
+    e[dthresh_violations] = np.nan
+
+    ax[2].plot(a, 'b', ls='-', alpha=0.5)
+    
+    nans, z = nan_helper(a)
+    a[nans] = np.interp(z(nans), z(~nans), a[~nans])
+
+    nans, z = nan_helper(e)
+    e[nans] = np.interp(z(nans), z(~nans), e[~nans])
+
+    ax[3].plot(a, 'g', ls='-', alpha=0.5)
+    ax[4].plot(geezer.windowed_mean(a, 7), 'k')
+
+    a = geezer.windowed_mean(a, window_size)
+    e = geezer.windowed_mean(e, window_size)
+    
+    print(a.shape)
+    print(e.shape)
+
+    print(azimuth.shape)
+    print(elevation.shape)
+
+
+    plt.show()
+
+    
+    trajectory = np.zeros((a.shape[0], 2))
+    trajectory[:,0] = e
+    trajectory[:,1] = a
+
+    # trajectory = np.deg2rad(trajectory)
+    return trajectory
+
+
+
+
+
+
 
 def thresholded_nan(signal, pix_disp_thresh=15):
     '''
@@ -218,4 +301,58 @@ def cartesian_to_spherical(xyz):
     phi = np.arctan2(y, x)
     
     return theta, phi
+
+def estimate_camera_led_offset(open_h5_file, leds, led_angles, reference_frame, num_offsets=150, verbose=True):
+    led_1, led_2 = leds
+    distance_mtx = np.zeros((2, num_offsets*2, num_offsets*2))
+    x_offsets = np.arange(-num_offsets,num_offsets)
+    y_offsets = np.arange(-num_offsets,num_offsets)
+
+    for x_i in tqdm.tqdm(x_offsets):
+        for x_j in np.arange(-num_offsets,num_offsets):
+            offset = [x_i,x_j]
+
+            for which, predict_led in enumerate([led_1, led_2]):
+                for reference_led in [led_1, led_2]:
+                    if predict_led == reference_led:
+                        continue
+                    predicted_led_co = open_h5_file['fiducial_coordinates'][predict_led][reference_frame]
+                    fiducial_co = open_h5_file['fiducial_coordinates'][reference_led][reference_frame]
+                    camera_co = open_h5_file['fiducial_coordinates']['cam'][reference_frame]
+
+
+                    p_elevation, p_azimuth = geezer.calculate_gaze_angles(predicted_led_co, fiducial_co, camera_co, led_angles[reference_led], offset=offset)
+
+                    true = np.rad2deg(led_angles[predict_led])
+                    estimate = np.rad2deg([p_elevation, p_azimuth])*2
+
+                    # Compute euclidean distance
+                    distance = np.sqrt(np.sum((true - estimate)**2))
+                    if distance == np.nan:
+                        print(x_i,x_j)
+                    distance_mtx[which, x_i+num_offsets,x_j+num_offsets] = distance
+    
+    best_offsets = []
+    for l_i in range(2):
+        w = np.where(distance_mtx[l_i] == np.nanmin(distance_mtx[l_i]))
+
+        best_offset = [x_offsets[w[0][0]], y_offsets[w[1][0]]]
+        best_offsets.append(best_offset)
+        
+        if verbose:
+            plt.imshow(distance_mtx[l_i])
+            plt.colorbar()
+            plt.plot(w[1][0], w[0][0], 'ro')
+            plt.title('Best offset for {}'.format(leds[l_i]))
+            plt.show()
+
+    print('Best offset predicted from {}: {}'.format(led_1, best_offsets[0]))
+    print('Best offset predicted from {}: {}'.format(led_2, best_offsets[1]))
+    return distance_mtx, best_offsets
+
+def get_relative_angle(signal):
+    adjusted_signal = np.abs(signal) % (np.pi)
+    adjustments = np.where(adjusted_signal > np.pi)
+    adjusted_signal[adjustments] = 2*np.pi - adjusted_signal[adjustments]
+    return adjusted_signal
 
