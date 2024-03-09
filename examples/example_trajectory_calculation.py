@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 
 reference_frame = 11572
 
-geometry_file = '/home/dennis/Code/geezer/geometries/jan_2024_geometry.json'
-h5_filepath= '/home/dennis/Data/data_2/kizaru/kizaru_geezer_output.h5'
+geometry_file = '/home/yfaragal/geezer/geometries/jan_2024_geometry.json'
+h5_filepath= '/data/cortex/raw/GolDRoger/goldroger_geezer.h5'
 
 file = h5.File(h5_filepath, 'r')
 
@@ -78,6 +78,32 @@ for LED in ['se', 'sw']:
 
     trajectories[LED] = trajectory
 
+# %%
+def blink_identification(led_coords,threshold=30, min_duration=100, max_duration=400):
+    """
+    Identify blinks for each frame of LED coordinates
+    Arguments: 
+    led_coords: shape (n_frames,2)
+    threshold: value to classify changes as a blink 
+    min_duration: minimum value of duration as a blink (default 100ms)
+    max_duration: maximum value of duration as a blink (default 400ms)
+    Returns:
+    led_blinks: np.array of shape (n_frames,2) where 1 == blink and 0 == open
+    """
+    led_blinks = np.zeros(led_coords.shape)
+    min_d = int(min_duration*30/1000) #framerate
+    max_d = int(max_duration*30/1000)
+    for i in range(led_coords.shape[1]):
+        diff = np.abs(np.diff(led_coords[:,i]))
+        diffind = np.where(diff > threshold)[0]
+        diffind += 1
+        led_blinks[diffind,i] = 1
+        diffindind = np.diff(diffind)
+        inds = np.where((diffindind < max_d) & (diffindind >= min_d))[0]
+        for j in np.arange(1,inds.shape[0]):
+            led_blinks[inds[j-1]:inds[j],i] = 1
+    return led_blinks
+
 # %% 
 trajectories['se'].shape
 plt.plot(trajectories['se'][:,0])
@@ -143,17 +169,17 @@ for LED in ['se', 'sw']:
 # %% 
 file.close()
 
-with h5.File(h5_filepath, 'a') as file:
-    try:
-        del file['raw_trajectories']
-        del file['interp_table_trajectories']
-    except:
-        pass
-    file.create_dataset('raw_trajectories/se', data=trajectories['se'])
-    file.create_dataset('raw_trajectories/sw', data=trajectories['sw'])
+# with h5.File(h5_filepath, 'a') as file:
+#     try:
+#         del file['raw_trajectories']
+#         del file['interp_table_trajectories']
+#     except:
+#         pass
+#     file.create_dataset('raw_trajectories/se', data=trajectories['se'])
+#     file.create_dataset('raw_trajectories/sw', data=trajectories['sw'])
 
-    file.create_dataset('interp_table_trajectories/se', data=table_trajectories['se'])
-    file.create_dataset('interp_table_trajectories/sw', data=table_trajectories['sw'])
+#     file.create_dataset('interp_table_trajectories/se', data=table_trajectories['se'])
+#     file.create_dataset('interp_table_trajectories/sw', data=table_trajectories['sw'])
 
 # %% 
 
