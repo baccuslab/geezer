@@ -34,10 +34,9 @@ import multiprocessing
 # from utils import process_frame
 # import utils 
 
-from geometry import GeometryTab
-from trajectory import TrajectoryTab
-from curate import CurateTab
-from image_proc import ImageProcTab
+from geezer.gui.geometry import GeometryTab
+from geezer.gui.curate import CurateTab
+from geezer.gui.image_proc import ImageProcTab
 
 
 # rcParams: set default so that axis isn't shown and no x or yticks
@@ -61,15 +60,17 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget(self)
         self.setCentralWidget(self.tabs)
 
+        self.imageproc_tab = ImageProcTab(self)
         self.geometry_tab = GeometryTab(self)
-        self.trajectory_tab = TrajectoryTab(self)
+
         self.curate_tab = CurateTab(self)
         self.imageproc_tab = ImageProcTab(self)
+        # self.trajectory_tab = TrajectoryTab(self)
 
         self.tabs.addTab(self.imageproc_tab, "Centroids")
         self.tabs.addTab(self.geometry_tab, "Geometry")
-        self.tabs.addTab(self.trajectory_tab, "Trajectory")
-        self.tabs.addTab(self.curate_tab, "Curate")
+        # self.tabs.addTab(self.trajectory_tab, "Trajectory")
+        # self.tabs.addTab(self.curate_tab, "Curate")
 
         self.tabs.currentChanged.connect(self.tab_changed)
 

@@ -53,9 +53,10 @@ import cv2
 from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
-from utils import process_frame
-import utils
-from geometry import GeometryTab
+# from utils import process_frame
+import geezer
+# import utils
+from geezer.gui.geometry import GeometryTab
 import IPython
 
 pupil_params = {}
@@ -500,7 +501,7 @@ class ImageProcTab(QWidget):
                 self.axis.clear()
                 self.axis.imshow(frame, "gray", clim=(low, high))
             else:
-                self.dogs = utils.dogs(frame, pp, fp)
+                self.dogs = geezer.dogs(frame, pp, fp)
                 if self.view == 1:
                     frame = self.dogs[0]
                 elif self.view == 2:
@@ -571,6 +572,10 @@ class ImageProcTab(QWidget):
         elif event.key() == Qt.Key_R:
             self.lower_right_crop_coords = self.last_co
             print(self.last_co)
+        elif event.key() == Qt.Key_J:
+            self.current_frame -= 5
+        elif event.key() == Qt.Key_K:
+            self.current_frame += 5
 
         self.update_frame()
 
@@ -662,7 +667,7 @@ class ImageProcTab(QWidget):
 
                     try:
                         frame = frame.mean(axis=2)
-                        _processed_frame = process_frame(
+                        _processed_frame = geezer.process_frame(
                             frame, pxy, fxys, proc_pup_params, proc_fid_params
                         )
                         
