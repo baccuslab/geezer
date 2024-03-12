@@ -4,6 +4,31 @@ import math
 import tqdm
 import matplotlib.pyplot as plt
 
+def blink_identification(led_coords,threshold=30, min_duration=100, max_duration=400):
+    """
+    Identify blinks for each frame of LED coordinates
+    Arguments: 
+    led_coords: shape (n_frames,2)
+    threshold: value to classify changes as a blink 
+    min_duration: minimum value of duration as a blink (default 100ms)
+    max_duration: maximum value of duration as a blink (default 400ms)
+    Returns:
+    led_blinks: np.array of shape (n_frames,2) where 1 == blink and 0 == open
+    """
+    led_blinks = np.zeros(led_coords.shape)
+    min_d = int(min_duration*30/1000) #framerate
+    max_d = int(max_duration*30/1000)
+    for i in range(led_coords.shape[1]):
+        diff = np.abs(np.diff(led_coords[:,i]))
+        diffind = np.where(diff > threshold)[0]
+        diffind += 1
+        led_blinks[diffind,i] = 1
+        diffindind = np.diff(diffind)
+        inds = np.where((diffindind < max_d) & (diffindind >= min_d))[0]
+        for j in np.arange(1,inds.shape[0]):
+            led_blinks[inds[j-1]:inds[j],i] = 1
+    return led_blinks
+
 def plot_cam_basis(centered_geometry, cam_basis, led_angles):
     axis = plt.axes(projection='3d')
     axis.plot(*centered_geometry['camera'], 'ro')
