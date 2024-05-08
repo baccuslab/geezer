@@ -53,10 +53,9 @@ import cv2
 from multiprocessing import Pool
 import numpy as np
 import matplotlib.pyplot as plt
-# from utils import process_frame
-import geezer
-# import utils
-from geezer.gui.geometry import GeometryTab
+from utils import process_frame
+import utils
+from geometry import GeometryTab
 import IPython
 
 pupil_params = {}
@@ -201,7 +200,6 @@ class ImageProcTab(QWidget):
 
         self.pupil_co = None
         self.fiducial_coordinates = {}
-        self.fiducial_reference_frames = {}
         self.selected_fiducial = None
 
         self.coordinate_file = None
@@ -452,7 +450,6 @@ class ImageProcTab(QWidget):
             return
 
         self.fiducial_coordinates[fid_name] = self.last_co
-        self.fiducial_reference_frames[fid_name] = self.current_frame
         self.update_frame()
 
     def slider_changed(self):
@@ -501,7 +498,7 @@ class ImageProcTab(QWidget):
                 self.axis.clear()
                 self.axis.imshow(frame, "gray", clim=(low, high))
             else:
-                self.dogs = geezer.dogs(frame, pp, fp)
+                self.dogs = utils.dogs(frame, pp, fp)
                 if self.view == 1:
                     frame = self.dogs[0]
                 elif self.view == 2:
@@ -572,10 +569,6 @@ class ImageProcTab(QWidget):
         elif event.key() == Qt.Key_R:
             self.lower_right_crop_coords = self.last_co
             print(self.last_co)
-        elif event.key() == Qt.Key_J:
-            self.current_frame -= 5
-        elif event.key() == Qt.Key_K:
-            self.current_frame += 5
 
         self.update_frame()
 
@@ -618,9 +611,6 @@ class ImageProcTab(QWidget):
         if self.h5_filename == "":
             return
 
-        if self.h5_filename[-3:] != ".h5":
-            self.h5_filename += ".h5"
-
         _video = cv2.VideoCapture(self.mp4_filename)
         meta = {}
         start_frame = int(self.start_frame_process_edit.text())
@@ -659,77 +649,36 @@ class ImageProcTab(QWidget):
             video = cv2.VideoCapture(self.mp4_filename)
             print("Started worker")
             local_results = []
-            local_results_sw = np.zeros((end_frame-start_frame,2))
-            local_results_se = np.zeros((end_frame-start_frame,2))
-            # g = h5.File('results.h5', 'w')
-            # new_results_group = g.create_group('new_results')
             for frame_idx in tqdm.tqdm(range(start_frame, end_frame)):
                 video.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
                 ret, frame = video.read()
-                frame = frame.mean(axis=2)
+                # frame = frame.mean(axis=2)
                 if ret:
-                    _processed_frame = geezer.process_frame_fids(frame, fxys, proc_fid_params)
-                    local_results_sw[frame_idx-start_frame,:] = _processed_frame['sw']
-                    local_results_se[frame_idx-start_frame,:] = _processed_frame['se']
 
-                    # try:
-                    #     frame = frame.mean(axis=2)
-                    #     _processed_frame = geezer.process_frame(
-                    #         frame, pxy, fxys, proc_pup_params, proc_fid_params
-                    #     )
+                    try:
+                        frame = frame.mean(axis=2)
+                        _processed_frame = process_frame(
+                            frame, pxy, fxys, proc_pup_params, proc_fid_params
+                        )
                         
-                    #     error_flag=0 # no error
-                    #     processed_frame = [frame_idx, _processed_frame, error_flag]
-                    #     local_results.append(processed_frame)
-                    # except:
-                    #     error_flag=1 # processing error
-                    #     processed_frame = [frame_idx, False, error_flag]
-                    #     local_results.append(processed_frame)
+                        error_flag=0 # no error
+                        processed_frame = [frame_idx, _processed_frame, error_flag]
+                        local_results.append(processed_frame)
+                    except:
+                        error_flag=1 # processing error
+                        processed_frame = [frame_idx, False, error_flag]
+                        local_results.append(processed_frame)
                     # # pass
 
                 else:
                     # input("Frame not found {}".format(frame_idx))
-                    print('Frame not found {}'.format(frame_idx))
-                    # error_flag=2 # frame not found
-                    # processed_frame = [frame_idx, False, error_flag]
-                    # local_results.append(processed_frame)
-            # ws_hs_old = np.zeros((end_frame-start_frame,2))
-            new_results_sw = blink_identification_zscore(local_results_sw,threshold=0.5)
-            new_results_se = blink_identification_zscore(local_results_se,threshold=0.5)
-            ws_hs_new = np.zeros((end_frame-start_frame,2))
-            for frame_idx in tqdm.tqdm(range(start_frame, end_frame)):
-                video.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
-                ret, frame = video.read()
-                frame = frame.mean(axis=2)
-                if not ret:
-                    break
-                norm_idx = frame_idx-start_frame
-                print(norm_idx)
-                if new_results_se[norm_idx,1] == 0 and new_results_sw[norm_idx,1] == 0: #use index 1 as there is usually a lot of horizontal eye movements
-                    _processed_frame = process_frame(
-                        frame, pxy, fxys, proc_pup_params, proc_fid_params,
-                    ellipse=True)
-                    # result = ground_truth_ellipse(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4])
-                    # ws_hs_old[norm_idx,0] = _processed_frame[2]
-                    # ws_hs_old[norm_idx,1] = _processed_frame[3]
-                    # phi_s[norm_idx] = _processed_frame[4]
-                    # pups_xys[norm_idx,:] = _processed_frame[0]
-                    result, ad_width, ad_height = ground_truth_ellipse_adjustment_draw(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4],fraction=0.008)
-                    # result = np.uint8(result)
-                    ws_hs_new[norm_idx,0] = ad_width
-                    ws_hs_new[norm_idx,1] = ad_height
-                    local_results.append(_processed_frame)
-                elif new_results_se[norm_idx,1] == 1 or new_results_sw[norm_idx,1] == 1: 
-                    _processed_frame = process_frame(
-                        frame, pxy, fxys, proc_pup_params, proc_fid_params,
-                    ellipse=False)
-                    # result = np.uint8(frame)
-                    local_results.append(_processed_frame)
-            # g.close()
+                    # print('Frame not found {}'.format(frame_idx))
+                    error_flag=2 # frame not found
+                    processed_frame = [frame_idx, False, error_flag]
+                    local_results.append(processed_frame)
 
             # Append local results to the shared list
             result_list.extend(local_results)
-            video.release()
 
         # Create and start the processes
         processes = []
@@ -757,14 +706,14 @@ class ImageProcTab(QWidget):
 
         save_frame_idxs = np.array([x[0] for x in results])
         save_pupil_co = np.array([x[1][0] for x in results])
-        save_widths = np.array([x[1][2] for x in results])
-        save_heights = np.array([x[1][3] for x in results])
-        save_phis = np.array([x[1][4] for x in results])
+        # save_widths = np.array([x[1][2] for x in results])
+        # save_heights = np.array([x[1][3] for x in results])
+        # save_phis = np.array([x[1][4] for x in results])
         save_fiducial_coordinates = {}
         
 
         fiducials_names = results[0][1][1].keys()
-        for fiducial_name in fiducials_names:
+        for fiducial_name in fiducials_n                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ames:
             save_fiducial_coordinates[fiducial_name] = np.array([x[1][1][fiducial_name] for x in results])
     
 
@@ -773,27 +722,19 @@ class ImageProcTab(QWidget):
             frame_idxs = save_frame_idxs[sidx]
 
             f.create_dataset("frame_idxs", data=frame_idxs)
-            # new_results_group = g.create_group('new_results')
 
             save_pupil_co = np.array(save_pupil_co)[sidx]
             f.create_dataset("pup_co", data=save_pupil_co)
 
-            f.create_dataset("width", data=ws_hs_new[sidx,0])
-            f.create_dataset("height", data=ws_hs_new[sidx,1])
-            f.create_dataset("phi", data=save_phis[sidx])
-            f.create_dataset('width_old', data=save_widths[sidx])
-            f.create_dataset('height_old', data=save_heights[sidx])
-            f.create_dataset('blinks_sw', data=new_results_sw[sidx])
-            f.create_dataset('blinks_se', data=new_results_se[sidx])
-
+            # f.create_dataset("width", data=save_widths[sidx])
+            # f.create_dataset("height", data=save_heights[sidx])
+            # f.create_dataset("phi", data=save_phis[sidx])
 
             f.create_group("fiducial_coordinates")
             for fiducial_name in fiducials_names:
                 f.create_dataset("fiducial_coordinates/{}".format(fiducial_name), data=save_fiducial_coordinates[fiducial_name][sidx])
-                f["fiducial_coordinates/{}".format(fiducial_name)].attrs["reference_frame"] = self.fiducial_reference_frames[fiducial_name] 
-            f.create_group("meta")
-            for k,v in meta.items(): 
-                f["meta"].attrs[k] = v
+
+            f.create_dataset("meta", data=json.dumps(meta))
 
         # Close the video file
         _video.release()
