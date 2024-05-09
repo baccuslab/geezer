@@ -4,6 +4,31 @@ import math
 import tqdm
 import matplotlib.pyplot as plt
 
+def blink_identification(led_coords,threshold=30, min_duration=100, max_duration=400):
+    """
+    Identify blinks for each frame of LED coordinates
+    Arguments: 
+    led_coords: shape (n_frames,2)
+    threshold: value to classify changes as a blink 
+    min_duration: minimum value of duration as a blink (default 100ms)
+    max_duration: maximum value of duration as a blink (default 400ms)
+    Returns:
+    led_blinks: np.array of shape (n_frames,2) where 1 == blink and 0 == open
+    """
+    led_blinks = np.zeros(led_coords.shape)
+    min_d = int(min_duration*30/1000) #framerate
+    max_d = int(max_duration*30/1000)
+    for i in range(led_coords.shape[1]):
+        diff = np.abs(np.diff(led_coords[:,i]))
+        diffind = np.where(diff > threshold)[0]
+        diffind += 1
+        led_blinks[diffind,i] = 1
+        diffindind = np.diff(diffind)
+        inds = np.where((diffindind < max_d) & (diffindind >= min_d))[0]
+        for j in np.arange(1,inds.shape[0]):
+            led_blinks[inds[j-1]:inds[j],i] = 1
+    return led_blinks
+
 def plot_cam_basis(centered_geometry, cam_basis, led_angles):
     axis = plt.axes(projection='3d')
     axis.plot(*centered_geometry['camera'], 'ro')
@@ -148,7 +173,7 @@ def calculate_gaze_trajectory(pupil_co, led_co, cam_co, led_angles, offset=[0,0]
 
     return gaze_angles
 
-def sanitize_trajectory(trajectory, thresh=[10,30], d_thresh=2, window_size=10):
+def sanitize_trajectory(trajectory, thresh=[10,30], d_thresh=2, window_size=10, window_mean_proc=True):
     elevation = trajectory[:,0]
     azimuth = trajectory[:,1]
 
@@ -159,8 +184,6 @@ def sanitize_trajectory(trajectory, thresh=[10,30], d_thresh=2, window_size=10):
 
     a = np.copy(azimuth)
 
-    fig,ax= plt.subplots(5,1, sharex=True)
-    ax[0].plot(a, 'k')
 
     e_median = np.nanmedian(e)
     a_median = np.nanmedian(a)
@@ -180,7 +203,6 @@ def sanitize_trajectory(trajectory, thresh=[10,30], d_thresh=2, window_size=10):
     a[a_gt] = np.nan
     a[a_lt] = np.nan
     
-    ax[1].plot(a, 'r', ls='--')
 
 
     e_dthresh_violations = np.abs(np.diff(elevation)) > d_thresh 
@@ -194,7 +216,6 @@ def sanitize_trajectory(trajectory, thresh=[10,30], d_thresh=2, window_size=10):
     a[dthresh_violations] = np.nan
     e[dthresh_violations] = np.nan
 
-    ax[2].plot(a, 'b', ls='-', alpha=0.5)
     
     nans, z = nan_helper(a)
     a[nans] = np.interp(z(nans), z(~nans), a[~nans])
@@ -202,11 +223,10 @@ def sanitize_trajectory(trajectory, thresh=[10,30], d_thresh=2, window_size=10):
     nans, z = nan_helper(e)
     e[nans] = np.interp(z(nans), z(~nans), e[~nans])
 
-    ax[3].plot(a, 'g', ls='-', alpha=0.5)
-    ax[4].plot(geezer.windowed_mean(a, 7), 'k')
-
-    a = geezer.windowed_mean(a, window_size)
-    e = geezer.windowed_mean(e, window_size)
+    
+    if window_mean_proc:
+        a = geezer.windowed_mean(a, window_size)
+        e = geezer.windowed_mean(e, window_size)
     
     print(a.shape)
     print(e.shape)
@@ -215,7 +235,6 @@ def sanitize_trajectory(trajectory, thresh=[10,30], d_thresh=2, window_size=10):
     print(elevation.shape)
 
 
-    plt.show()
 
     
     trajectory = np.zeros((a.shape[0], 2))
@@ -318,7 +337,10 @@ def estimate_camera_led_offset(open_h5_file, leds, led_angles, reference_frame, 
                         continue
                     predicted_led_co = open_h5_file['fiducial_coordinates'][predict_led][reference_frame]
                     fiducial_co = open_h5_file['fiducial_coordinates'][reference_led][reference_frame]
-                    camera_co = open_h5_file['fiducial_coordinates']['cam'][reference_frame]
+                    try:
+                        camera_co = open_h5_file['fiducial_coordinates']['cam'][reference_frame]
+                    except:
+                        camera_co = open_h5_file['fiducial_coordinates']['camera'][reference_frame]
 
 
                     p_elevation, p_azimuth = geezer.calculate_gaze_angles(predicted_led_co, fiducial_co, camera_co, led_angles[reference_led], offset=offset)

@@ -238,6 +238,11 @@ class ImageProcTab(QWidget):
         self.end_frame_process_edit = QLineEdit()
         self.num_processes_edit = QLineEdit()
 
+        self.x_start = 0
+        self.x_end = -1
+        self.y_start = 0
+        self.y_end = -1
+
         self.pup_params = []
         self.pup_labels = []
         self.pup_exp = QLineEdit()
@@ -390,11 +395,10 @@ class ImageProcTab(QWidget):
         ul = self.upper_left_crop_coords
         lr = self.lower_right_crop_coords
 
-        x_start = ul[0]
-        x_end = lr[0]
-
-        y_start = ul[1]
-        y_end = lr[1]
+        x_start = int(ul[0])
+        x_end = int(lr[0])
+        y_start = int(ul[1])
+        y_end = int(lr[1])
 
         # get a filepath from a qfiledialog
         crop_filename, _ = QFileDialog.getSaveFileName(
@@ -406,12 +410,14 @@ class ImageProcTab(QWidget):
 
         print(self.mp4_filename)
         # run the following command in a separate process
-        command = 'ffmpeg -i {} -filter:v "crop={}:{}:{}:{}" {}'.format(
+        command = 'ffmpeg -i {} -filter:v "crop={}:{}:{}:{}" -c:v ffv1 -level 3 -g 1 -coder 1 -context 1 -c:a copy {}'.format(
+                'ffmpeg -i {} -filter:v "crop=250:250:0:0" -c:v libx264 -crf 0 -preset ultrafast -c:a copy output.mp4',
+
             self.mp4_filename,
-            x_end - x_start,
-            y_end - y_start,
-            x_start,
-            y_start,
+            int(x_end - x_start),
+            int(y_end - y_start),
+            int(x_start),
+            int(y_start),
             crop_filename,
         )
 
@@ -487,7 +493,7 @@ class ImageProcTab(QWidget):
         if self.video.get(cv2.CAP_PROP_POS_FRAMES) != self.current_frame:
             print("Setting frame")
             self.video.set(cv2.CAP_PROP_POS_FRAMES, self.current_frame)
-
+    
         ret, frame = self.video.read()
         print(self.current_frame, ret)
         frame = frame.mean(axis=2)
@@ -662,11 +668,11 @@ class ImageProcTab(QWidget):
             for frame_idx in tqdm.tqdm(range(start_frame, end_frame)):
                 video.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
                 ret, frame = video.read()
+
                 # frame = frame.mean(axis=2)
                 if ret:
 
                     try:
-                        frame = frame.mean(axis=2)
                         _processed_frame = geezer.process_frame(
                             frame, pxy, fxys, proc_pup_params, proc_fid_params
                         )
