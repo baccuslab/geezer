@@ -410,9 +410,8 @@ class ImageProcTab(QWidget):
 
         print(self.mp4_filename)
         # run the following command in a separate process
-        command = 'ffmpeg -i {} -filter:v "crop={}:{}:{}:{}" -c:v ffv1 -level 3 -g 1 -coder 1 -context 1 -c:a copy {}'.format(
-                'ffmpeg -i {} -filter:v "crop=250:250:0:0" -c:v libx264 -crf 0 -preset ultrafast -c:a copy output.mp4',
-
+        command = 'ffmpeg -i {} -filter:v "crop={}:{}:{}:{}" -qscale:v 2 {}'.format(
+        # command = 'ffmpeg -i {} -filter:v "crop={}:{}:{}:{}" {}'.format(
             self.mp4_filename,
             int(x_end - x_start),
             int(y_end - y_start),
