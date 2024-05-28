@@ -440,6 +440,11 @@ class ImageProcTab(QWidget):
             self.high_clim_slider.setMaximum(np.max(frame))
             self.high_clim_slider.setValue(np.max(frame))
 
+            video_height = self.video.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            video_width = self.video.get(cv2.CAP_PROP_FRAME_WIDTH)
+
+            print('Video height: ', video_height)
+            print('Video width: ', video_width)
             self.update_frame()
 
     def set_pupil_co(self):
