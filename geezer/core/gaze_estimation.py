@@ -321,7 +321,7 @@ def cartesian_to_spherical(xyz):
     
     return theta, phi
 
-def estimate_camera_led_offset(open_h5_file, leds, led_angles, reference_frame, num_offsets=150, verbose=True):
+def estimate_camera_led_offset(open_h5_file, leds, led_angles, reference_frame, num_offsets=150, verbose=True, cam_name='cam'):
     led_1, led_2 = leds
     distance_mtx = np.zeros((2, num_offsets*2, num_offsets*2))
     x_offsets = np.arange(-num_offsets,num_offsets)
@@ -337,10 +337,8 @@ def estimate_camera_led_offset(open_h5_file, leds, led_angles, reference_frame, 
                         continue
                     predicted_led_co = open_h5_file['fiducial_coordinates'][predict_led][reference_frame]
                     fiducial_co = open_h5_file['fiducial_coordinates'][reference_led][reference_frame]
-                    try:
-                        camera_co = open_h5_file['fiducial_coordinates']['cam'][reference_frame]
-                    except:
-                        camera_co = open_h5_file['fiducial_coordinates']['camera'][reference_frame]
+
+                    camera_co = open_h5_file['fiducial_coordinates'][cam_name][reference_frame]
 
 
                     p_elevation, p_azimuth = geezer.calculate_gaze_angles(predicted_led_co, fiducial_co, camera_co, led_angles[reference_led], offset=offset)

@@ -1,0 +1,4 @@
+[{"name": "headbar", "type": "point", "x": 0, "y": 0, "z": 8.75},
+ {"name": "LED1", "type":"point", "x": -10.5, "y": 3.75, "z": 16.5},
+ {"name": "LED2", "type":"point", "x": -10.5, "y": 1.25, "z": 16.5},
+ {"name": "LED3", "type":"point", "x": -6, "y": -2.5, "z": 9}]
