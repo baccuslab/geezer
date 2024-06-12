@@ -1,0 +1,13 @@
+{"leds": 
+	{
+		"ne": "ne",
+		"se": "se",
+		"sw": "sw"
+	},
+"camera": 
+	{
+		"cam": "lens"
+	},
+"pupil": "headbar"
+}
+
