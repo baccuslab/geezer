@@ -694,9 +694,9 @@ class ImageProcTab(QWidget):
                     # processed_frame = [frame_idx, False, error_flag]
                     # local_results.append(processed_frame)
             # ws_hs_old = np.zeros((end_frame-start_frame,2))
-            new_results_sw = blink_identification_zscore(local_results_sw,threshold=0.5)
-            new_results_se = blink_identification_zscore(local_results_se,threshold=0.5)
-            ws_hs_new = np.zeros((end_frame-start_frame,2))
+            new_results_sw = geezer.blink_identification_zscore(local_results_sw,threshold=0.5)
+            new_results_se = geezer.blink_identification_zscore(local_results_se,threshold=0.5)
+            # ws_hs_new = np.zeros((end_frame-start_frame,2))
             for frame_idx in tqdm.tqdm(range(start_frame, end_frame)):
                 video.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
                 ret, frame = video.read()
@@ -706,7 +706,7 @@ class ImageProcTab(QWidget):
                 norm_idx = frame_idx-start_frame
                 print(norm_idx)
                 if new_results_se[norm_idx,1] == 0 and new_results_sw[norm_idx,1] == 0: #use index 1 as there is usually a lot of horizontal eye movements
-                    _processed_frame = process_frame(
+                    _processed_frame = geezer.process_frame(
                         frame, pxy, fxys, proc_pup_params, proc_fid_params,
                     ellipse=True)
                     # result = ground_truth_ellipse(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4])
@@ -714,17 +714,19 @@ class ImageProcTab(QWidget):
                     # ws_hs_old[norm_idx,1] = _processed_frame[3]
                     # phi_s[norm_idx] = _processed_frame[4]
                     # pups_xys[norm_idx,:] = _processed_frame[0]
-                    result, ad_width, ad_height = ground_truth_ellipse_adjustment_draw(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4],fraction=0.008)
+                    result, ad_width, ad_height = geezer.ground_truth_ellipse_adjustment_draw(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4],fraction=0.008)
                     # result = np.uint8(result)
-                    ws_hs_new[norm_idx,0] = ad_width
-                    ws_hs_new[norm_idx,1] = ad_height
-                    local_results.append(_processed_frame)
+                    # ws_hs_new[norm_idx,0] = ad_width
+                    # ws_hs_new[norm_idx,1] = ad_height
+                    processed_frame = [frame_idx, _processed_frame, 0, adj_width, adj_height]
+                    local_results.append(processed_frame)
                 elif new_results_se[norm_idx,1] == 1 or new_results_sw[norm_idx,1] == 1: 
                     _processed_frame = process_frame(
                         frame, pxy, fxys, proc_pup_params, proc_fid_params,
                     ellipse=False)
                     # result = np.uint8(frame)
-                    local_results.append(_processed_frame)
+                    processed_frame = [frame_idx, _processed_frame, 1, 0, 0]
+                    local_results.append(processed_frame)
             # g.close()
 
             # Append local results to the shared list
@@ -760,6 +762,9 @@ class ImageProcTab(QWidget):
         save_widths = np.array([x[1][2] for x in results])
         save_heights = np.array([x[1][3] for x in results])
         save_phis = np.array([x[1][4] for x in results])
+        blinks = np.array([x[2] for x in results])
+        save_new_widths = np.array([x[3] for x in results])
+        save_new_heights = np.array([x[4] for x in results])
         save_fiducial_coordinates = {}
         
 
@@ -778,13 +783,13 @@ class ImageProcTab(QWidget):
             save_pupil_co = np.array(save_pupil_co)[sidx]
             f.create_dataset("pup_co", data=save_pupil_co)
 
-            f.create_dataset("width", data=ws_hs_new[sidx,0])
-            f.create_dataset("height", data=ws_hs_new[sidx,1])
+            f.create_dataset("width", data=save_new_widths[sidx])
+            f.create_dataset("height", data=save_new_heights[sidx])
             f.create_dataset("phi", data=save_phis[sidx])
             f.create_dataset('width_old', data=save_widths[sidx])
             f.create_dataset('height_old', data=save_heights[sidx])
-            f.create_dataset('blinks_sw', data=new_results_sw[sidx])
-            f.create_dataset('blinks_se', data=new_results_se[sidx])
+            f.create_dataset('blinks', data=blinks[sidx])
+            # f.create_dataset('blinks_se', data=new_results_se[sidx])
 
 
             f.create_group("fiducial_coordinates")

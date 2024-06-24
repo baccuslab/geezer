@@ -339,7 +339,6 @@ def fit(r):
     coef (list): list of the coefficients describing an ellipse
         [a,b,c,d,f,g] corresponding to ax**2+2bxy+cy**2+2dx+2fy+g
     """
-
     x, y = r[:,0], r[:,1]
 
 
@@ -400,7 +399,6 @@ def fit(r):
 
 #    if (a - c) == 0:
 #        return True
-
     # finding center of ellipse [eqn.19 and 20] from (**)
     af = a * f
     cd = c * d
@@ -473,10 +471,10 @@ def ground_truth_ellipse(frame, pup_co, width, height, phi):
 # fids_parameters =  [1, 1, 40, 65] # for 4/10/2024 params 89k 91k
 # fids_parameters =  [1, 3, 11, 80] # for 4/11/2024 params 89k5 91k
 
-# pup_parameters = [5, 20, 50, 220] # for 4/22/2024 params 89k5 91k new 
-# fids_parameters =  [1, 2, 20, 80] # for 4/22/2024 params 89k5 91k new 
-pup_parameters = [5, 11, 60, 220] # for 5/8/2024 params 3k 167k new 
-fids_parameters =  [1, 2, 20, 80] # for 5/8/2024 params 3k 167k new 
+pup_parameters = [5, 20, 50, 220] # for 4/22/2024 params 89k5 91k new 
+fids_parameters =  [1, 2, 20, 80] # for 4/22/2024 params 89k5 91k new 
+# pup_parameters = [5, 11, 60, 220] # for 5/8/2024 params 3k 167k new 
+# fids_parameters =  [1, 2, 20, 80] # for 5/8/2024 params 3k 167k new 
 
 # pup_parameters = {'exp': 3, 'small': 20, 'large': 50, 'thresh': 200}
 # fids_parameters =  {'exp': 1, 'small': 3, 'large': 11, 'thresh': 65}
@@ -603,7 +601,6 @@ def ground_truth_ellipse_adjustment(frame, pup_co, width, height, phi,fraction=0
     result = cv2.addWeighted(frame, 1, mask, 0.5, 0)
     return result, adjusted_width, adjusted_height
 
-
 def ground_truth_ellipse_adjustment_draw(frame, pup_co, width, height, phi,fraction=0.01, scale=2):
     """
     Function: takes ellipse parameters, rotates the frame usign scipy.ndimage,
@@ -697,9 +694,6 @@ def ground_truth_ellipse_adjustment_draw(frame, pup_co, width, height, phi,fract
     result = cv2.addWeighted(result2, 1, mask2, 0.5, 0)
     return result, adjusted_width, adjusted_height
 
-
-
-
 def rot(image, xy, angle):
     im_rot = rotate(image,angle) 
     org_center = (np.array(image.shape[:2][::-1])-1)/2.
@@ -709,6 +703,151 @@ def rot(image, xy, angle):
     new = np.array([org[0]*np.cos(a) + org[1]*np.sin(a),
             -org[0]*np.sin(a) + org[1]*np.cos(a) ])
     return im_rot, new+rot_center
+
+def ellipse_scaling(frame, pup_co, width, height, phi,min_scale=0.6,max_scale=2.0,step_size=0.05, threshold=0.011):
+    """
+    Function: takes ellipse parameters, rotates the frame usign scipy.ndimage,
+    adds the width and height parameters, and does some scaling and fractional thersholding
+    to take a more realistic and better fit pupil major and minor axes.
+    This is done by normalizing the image by the minimum pixel vaue of the image, and then taking all other values a certain
+    fraction of the minimum value or below to be the included width or height parameters.
+    Arguments:
+    - frame: image frame of some shape (m,n,3)
+    - pup_co: pupil coordinates
+    - width: major axis of pupil
+    - height: minor axis of pupileight[frame_idx]
+    - min_scale: minimum scale to increase/decrease width and height to find new adjusted width and height
+    - max_scale: maximum scale to increase/decrease width and height to find new adjusted width and height
+    - threshold: threshold for difference in z-scored values
+    Returns:
+    - adjusted hieght
+    - adjusted width
+    """
+    x, y = pup_co
+    ellipse_width = width
+    ellipse_height = height
+    angle = phi
+
+    scales = np.flip(np.arange(min_scale,max_scale,step_size))
+    # print(scales)
+    scale_pixel_mu = np.zeros(scales.shape)
+    for k in range(scales.shape[0]):
+        frame2 = None
+        frame3 = None
+        # img1_bg = None
+        masks = np.zeros_like(frame)
+        cv2.ellipse(masks, (int(x), int(y)), (int(ellipse_width*scales[k]), int(ellipse_height*scales[k])), int(angle), 0, 360, (128, 128, 128), -1)
+        mask_inv = cv2.bitwise_not(masks)
+        # plt.imshow(mask_inv)
+        # plt.show()
+        frame2 = frame
+        frame3 = frame
+        cv2.ellipse(frame2, (int(x), int(y)), (int(ellipse_width*scales[k]), int(ellipse_height*scales[k])), int(angle), 0, 360, (0, 0, 0), 1)
+        # masked = cv2.bitwise_and(masks, frame, mask=mask_inv)
+        img2_bg = cv2.bitwise_and(frame3, frame2,mask = masks)
+        # plt.figure()
+        # plt.imshow(img2_bg)
+        # print(img2_bg)
+        # plt.show()
+        scale_pixel_mu[k] = np.mean(frame[np.where(img2_bg != 0)]) #- pixel_mu_1) /pixel_mu_1)
+        # dst = cv2.add(masked, img1_bg)
+    # print(scales)
+    # print(scale_pixel_mu)
+    frame1 = None
+    frame0 = None
+    img1_bg = None
+    masks_1 = np.zeros_like(frame)
+    frame1 = frame
+    frame0 = frame
+    cv2.ellipse(masks_1, (int(x), int(y)), (int(ellipse_width), int(ellipse_height)), int(angle), 0, 360, (128, 128, 128), -1)
+    mask_inv_1 = cv2.bitwise_not(masks_1)
+    # plt.imshow(mask_inv)
+    # plt.show()
+    cv2.ellipse(frame1, (int(x), int(y)), (int(ellipse_width), int(ellipse_height)), int(angle), 0, 360, (0, 0, 0), 1)
+    # masked = cv2.bitwise_and(masks, frame, mask=mask_inv)
+    img1_bg = cv2.bitwise_and(frame0, frame1,mask = masks_1)
+    # print(img1_bg)
+    # plt.imshow(img1_bg)
+    pixel_mu_1 = np.mean(frame0[np.where(img1_bg != 0)])
+    # print(pixel_mu_1)
+    scale_pixel_mu  = (scale_pixel_mu - pixel_mu_1) / pixel_mu_1
+    # print(scale_pixel_mu)
+    # plt.figure()
+    # plt.plot(np.flip(scales[1:]),np.diff(np.flip(scale_pixel_mu)/step_size))
+    # print(np.where(scale_pixel_mu <= threshold))
+    final_scale = scales[np.min(np.where(scale_pixel_mu <= threshold))]
+
+    adjusted_width = ellipse_width*final_scale
+    adjusted_height = ellipse_height*final_scale
+    return adjusted_width, adjusted_height
+
+def ellipse_draw(frame, pup_co, width, height, phi, adjusted_height, adjusted_width):
+    """
+    Function: takes ellipse parameters, rotates the frame usign scipy.ndimage,
+    adds the width and height parameters, and does some scaling and fractional thersholding
+    to take a more realistic and better fit pupil major and minor axes.
+    This is done by normalizing the image by the minimum pixel vaue of the image, and then taking all other values a certain
+    fraction of the minimum value or below to be the included width or height parameters.
+    Arguments:
+    - frame: image frame of some shape (m,n,3)
+    - pup_co: pupil coordinates
+    - width: major axis of pupil
+    - height: minor axis of pupileight[frame_idx]
+    - scale: scale to increase width and height to find new adjusted width and height
+    Returns:
+    - masked frame with ellipse
+    - adjusted hieght
+    - adjusted width
+    """
+    x, y = pup_co
+    ellipse_width = width
+    ellipse_height = height
+    angle = phi
+
+    mask1 = np.zeros_like(frame)
+    cv2.ellipse(mask1, (int(x), int(y)), (int(adjusted_width), int(adjusted_height)), angle, 0, 360, (255, 255, 255), 1)
+    mask2 = np.zeros_like(frame)
+    cv2.ellipse(mask2, (int(x), int(y)), (int(ellipse_width), int(ellipse_height)), angle, 0, 360, (80, 80, 80), 1)
+    result2 = cv2.addWeighted(frame, 1, mask1, 0.5, 0)
+    result = cv2.addWeighted(result2, 1, mask2, 0.5, 0)
+    return result
+
+def sanitize_fiducial_coordinates_yf(og_led_pix_co, pix_disp_thresh=15):
+    '''
+    This function takes the fiducial coordinates and removes any outliers, 
+    filling in missing values (beyond some threshold) with the mean of the
+    estimate from other LEDs.
+
+    Use only the LEDs that you wish to use for this estimation in the dict
+
+    Args:
+        og_led_pix_co (dict): Individual LED pixel coordinates
+    Returns:
+        led_pix_co (dict): NaN imputed individual LED pixel coordinates
+    '''
+    # Set all times when the LED displacement is greater than some threshold to NaN
+    for i in range(og_led_pix_co.shape[0]):
+        xs = og_led_pix_co[:,0]
+        ys = og_led_pix_co[:,1]
+
+        median_x = np.median(og_led_pix_co[:,0])
+        median_y = np.median(og_led_pix_co[:,1])
+
+        a = np.where(xs > median_x+pix_disp_thresh)[0]
+        b = np.where(xs < median_x-pix_disp_thresh)[0]
+        c = np.where(ys > median_y+pix_disp_thresh)[0]
+        d = np.where(ys < median_y-pix_disp_thresh)[0]
+
+        print(a)
+        
+        og_led_pix_co[a,0] = np.nan
+        og_led_pix_co[b,0] = np.nan
+        og_led_pix_co[c,1] = np.nan
+        og_led_pix_co[d,1] = np.nan
+
+        led_pix_co = og_led_pix_co
+    
+    return led_pix_co
 
         # Define a worker function for each process
 def worker(mp4_filename, image_folder, start_frame, end_frame, pxy, fxys, proc_fid_params, proc_pup_params):  
@@ -770,13 +909,13 @@ def worker(mp4_filename, image_folder, start_frame, end_frame, pxy, fxys, proc_f
         local_results_se[frame_idx-start_frame,:] = _processed_frame['se']
 
 
-    new_results_sw = blink_identification_zscore(local_results_sw,threshold=0.5)
-    new_results_se = blink_identification_zscore(local_results_se,threshold=0.5)
+    new_results_sw = blink_identification_zscore(local_results_sw,threshold=0.8,min_duration=100)
+    new_results_se = blink_identification_zscore(local_results_se,threshold=0.8,min_duration=100)
     new_results_group.create_dataset('se', data=new_results_se)
     new_results_group.create_dataset('sw', data=new_results_sw)
     new_loc_results_group = g.create_group('new_loc_results')
     new_loc_results_group.create_dataset('sw', data=local_results_sw)
-    new_loc_results_group.create_dataset('se', data=local_results_sw)
+    new_loc_results_group.create_dataset('se', data=local_results_se)
     pup_xy_group = g.create_group('pup_xy')
     width_height_group_old = g.create_group('w_h_old')
     width_height_group_new = g.create_group('w_h_new')
@@ -799,8 +938,8 @@ def worker(mp4_filename, image_folder, start_frame, end_frame, pxy, fxys, proc_f
         if not ret:
             break
         norm_idx = frame_idx-start_frame
-        print(norm_idx)
-        if new_results_se[norm_idx,1] == 0 and new_results_sw[norm_idx,1] == 0: #use index 1 as there is usually a lot of horizontal eye movements
+        # print(norm_idx)
+        if new_results_sw[norm_idx,1] == 0 and new_results_se[norm_idx,1] == 0: #use index 1 as there is usually a lot of horizontal eye movements
             _processed_frame = process_frame(
                 frame, pxy, fxys, proc_pup_params, proc_fid_params,
             ellipse=True)
@@ -812,17 +951,32 @@ def worker(mp4_filename, image_folder, start_frame, end_frame, pxy, fxys, proc_f
             # result = np.uint8(result)
             # output_file1 = os.path.join(newpath1, f"frame_{frame_idx}.png")
             # cv2.imwrite(output_file1, result)
+            step_size = 0.05
+            min_scale = 0.6
+            max_scale = 2.0
+            thresh = 0.02
 
-
-            result, ad_width, ad_height = ground_truth_ellipse_adjustment_draw(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4],fraction=0.008)
+            # result, ad_width, ad_height = ground_truth_ellipse_adjustment_draw(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4],fraction=0.008)
+            frame = np.uint8(frame)
+            adj_width, adj_height = ellipse_scaling(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4], min_scale,max_scale,step_size,thresh)
+            ret, frame = video.read()
+            frame = np.uint8(np.mean(frame,axis=2))
+            if norm_idx == 0:
+                adj_w = adj_width
+                adj_h = adj_height
+            elif new_results_sw[norm_idx-1,1] == 1 or new_results_se[norm_idx-1,1] == 1:
+                adj_h,adj_w = ellipse_smoothing(adj_height, adj_width, ws_hs_new[norm_idx-1,1], ws_hs_new[norm_idx-1,0], a=1.0)
+            else:
+                adj_h,adj_w = ellipse_smoothing(adj_height, adj_width, ws_hs_new[norm_idx-1,1], ws_hs_new[norm_idx-1,0], a=0.7)
+            result = ellipse_draw(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4], adj_h, adj_w)
             result = np.uint8(result)
-            ws_hs_new[norm_idx,0] = ad_width
-            ws_hs_new[norm_idx,1] = ad_height
+            ws_hs_new[norm_idx,0] = adj_w
+            ws_hs_new[norm_idx,1] = adj_h
             output_file1 = os.path.join(newpath1, f"frame_{frame_idx}.png")
             cv2.imwrite(output_file1, result)
         
         # Save the frame as an image
-        elif new_results_se[norm_idx,1] == 1 or new_results_sw[norm_idx,1] == 1: 
+        elif new_results_sw[norm_idx,1] == 1 or new_results_se[norm_idx,1] == 1:
             _processed_frame = process_frame(
                 frame, pxy, fxys, proc_pup_params, proc_fid_params,
             ellipse=False)
@@ -874,6 +1028,30 @@ def worker(mp4_filename, image_folder, start_frame, end_frame, pxy, fxys, proc_f
     # result_list.extend(local_results)
     # results = list(result_list)
     # return results
+
+def ellipse_smoothing(current_height, current_width, previous_height, previous_width, a=0.8):
+    """
+    Function: smooth ellipse parameters (specifically width and height) by 
+    the previous ellipse parameter, unless if there was no ellipse
+    D(t*) = a*D(t) + (1-a)*D(t-1)
+    Where D is the tuple of the width and height at frame t, and a is a value between 0 and 1.
+    Input:
+    - current_height: D(t) 
+    - current_width: D(t)
+    - previous_height: D(t-1)
+    - previous_width: D(t-1)
+    - a: weigthing value
+    Output:
+    - new_current_width
+    - new_current_height
+    """
+    w_t = current_width
+    h_t = current_height
+    w_tm1 = previous_width
+    h_tm1 = previous_height
+    new_current_width = (a*w_t) + ((1-a)*w_tm1)
+    new_current_height = (a*h_t) + ((1-a)*h_tm1)
+    return new_current_height, new_current_width
 
 def save_to_h5(h5_filename,video_name):
     # Open the existing HDF5 file in write mode
@@ -934,7 +1112,103 @@ def blink_identification(led_coords, frame_rate=30, threshold=30, min_duration=1
     Identify blinks for each frame of LED coordinates
     Arguments: 
     led_coords: shape (n_frames,2)
-    threshold: value to classify changes as a blink 
+    threshold: vdef sanitize_fiducial_coordinates(og_led_pix_co, og_cam_pix_co, pix_disp_thresh=15):
+    '''
+    This function takes the fiducial coordinates and removes any outliers, 
+    filling in missing values (beyond some threshold) with the mean of the
+    estimate from other LEDs.
+
+    Use only the LEDs that you wish to use for this estimation in the dict
+
+    Args:
+        og_led_pix_co (dict): Dictionary of LED pixel coordinates
+        og_cam_pix_co (list): List of camera pixel coordinates
+
+    Returns:
+        led_pix_co (dict): Dictionary of LED pixel coordinates
+        cam_pix_co (list): List of camera pixel coordinates
+    '''
+
+    led_pix_co = {}
+    cam_pix_co = {}
+    
+    # Set all times when the LED displacement is greater than some threshold to NaN
+    for k, v in og_led_pix_co.items():
+        xs = v[:,0]
+        ys = v[:,1]
+
+        median_x = np.median(v[:,0])
+        median_y = np.median(v[:,1])
+
+        a = np.where(xs > median_x+pix_disp_thresh)[0]
+        b = np.where(xs < median_x-pix_disp_thresh)[0]
+        c = np.where(ys > median_y+pix_disp_thresh)[0]
+        d = np.where(ys < median_y-pix_disp_thresh)[0]
+
+        print(a)
+        
+        v[a,:] = np.nan
+        v[b,:] = np.nan
+        v[c,:] = np.nan
+        v[d,:] = np.nan
+
+        led_pix_co[k] = v
+
+
+
+    # Same with camera
+    xs = og_cam_pix_co[:,0]
+    ys = og_cam_pix_co[:,1]
+
+    median_x = np.median(og_cam_pix_co[:,0])
+    median_y = np.median(og_cam_pix_co[:,1])
+
+    a = np.where(xs > median_x+pix_disp_thresh)[0]
+    b = np.where(xs < median_x-pix_disp_thresh)[0]
+    c = np.where(ys > median_y+pix_disp_thresh)[0]
+    d = np.where(ys < median_y-pix_disp_thresh)[0]
+
+    og_cam_pix_co[a,:] = np.nan
+    og_cam_pix_co[b,:] = np.nan
+    og_cam_pix_co[c,:] = np.nan
+    og_cam_pix_co[d,:] = np.nan
+
+    cam_pix_co = og_cam_pix_co
+    
+    # Find times when all LEDs are not NaN
+    # Could do this pairwise, probably should for cam
+    prod = np.ones_like(cam_pix_co)
+
+    for k, v in led_pix_co.items():
+        prod = np.multiply(prod, ~np.isnan(v))
+
+    prod = np.multiply(prod, ~np.isnan(cam_pix_co))
+    all_fiducial_idxs = np.where(prod == True)[0]
+    
+    cam_offsets = {}
+    full_cam_preds = {}
+    filled_cam_preds = {}
+
+    for led in led_pix_co.keys():
+        cam_offsets[led] = cam_pix_co[all_fiducial_idxs, :] - led_pix_co[led][all_fiducial_idxs,:] 
+        
+        full_cam_preds[led]= led_pix_co[led][:,:] + np.median(cam_offsets[led], axis=0)
+        
+        filled_cam_preds[led] = np.where(np.isnan(cam_pix_co), full_cam_preds[led], cam_pix_co)
+    
+    # Average
+    cam_pix_co = np.mean([filled_cam_preds['sw'], filled_cam_preds['se']], axis=0)
+
+
+    # Mechanism for "filling in" missing values using EM, the way we do for cam, but taking
+    # into account multiple expectations and doing pairwise
+
+    # Find times when blinks occur
+
+
+
+
+    return led_pix_co, cam_pix_coalue to classify changes as a blink 
     min_duration: minimum value of duration as a blink (default 100ms)
     max_duration: maximum value of duration as a blink (default 400ms)
     Returns:
@@ -954,28 +1228,80 @@ def blink_identification(led_coords, frame_rate=30, threshold=30, min_duration=1
             led_blinks[diffind[inds[j]]:diffind[inds[j]+1],i] = 1
     return led_blinks
 
-def blink_identification_zscore(led_coords, frame_rate=30, threshold=0.4):
+def blink_identification_zscore(led_coords, frame_rate=30, threshold=0.4,cleanup=1, min_duration=100, max_duration=120):
     """
-    Identify blinks for each frame of LED coordivideo.release()
-    g.close()
-    frame_rate: Hz
-    threshold: value to classify changes as a blink in # pf standard deviations
+    Identify blinks for each frame of LED coordinates
+    Arguments:
+    - led_coords: coordinates in the shape of (n,2) for x,y
+    - frame_rate: Hz
+    - cleanup: cleanup boolean value for cleaning up fiducials that are smaller than a usual blink
+    - min_duration: a minimum duration of a blink in milliseconds
+    - threshold: value to classify changes as a blink in # of standard deviations
     Returns:
-    led_blinks: np.array of shape (n_frames,2) where 1 == blink and 0 == open
+    - led_blinks: np.array of shape (n_frames,2) where 1 == blink and 0 == open
     """
     led_blinks = np.zeros(led_coords.shape)
+    min_d = int(min_duration*frame_rate/1000)
+    max_d = int(max_duration*frame_rate/1000)
+    # baseline_leds = sanitize_fiducial_coordinates_yf(led_cords,)
     for i in range(led_coords.shape[1]):
         led_co_zscore = np.abs((led_coords[:,i] - np.mean(led_coords[:,i])) / np.std(led_coords[:,i]))
         led_co_inds = np.where(led_co_zscore >= threshold)[0]
         for j in range(len(led_co_inds)):
             if led_co_inds[j] == led_coords.shape[0]-1:
-                pass
+                continue
             else:
                 led_co_inds[j] += 1
         led_blinks[led_co_inds,i] = 1
         led_blinks[led_coords.shape[0]-1,i] = 0
+        new_led_co_inds = np.where(led_blinks[:,i] == 1)[0]
+        for m in range(new_led_co_inds.shape[0]):
+            if new_led_co_inds[m] == 0 or new_led_co_inds[m] == 1 or new_led_co_inds[m] == led_coords.shape[0]-1 or new_led_co_inds[m] == led_coords.shape[0]-2:
+                continue
+            else:
+                if led_blinks[new_led_co_inds[m]-2,i] == 1 and led_blinks[new_led_co_inds[m]-1,i] == 0:
+                    led_blinks[new_led_co_inds[m]-1,i] = 1
+                else:
+                    continue    
+        new_led_co_inds = np.where(led_blinks[:,i] == 1)[0]
+        for m in range(new_led_co_inds.shape[0]):
+            if new_led_co_inds[m] == 0 or new_led_co_inds[m] == led_coords.shape[0]-1:
+                continue
+            else:
+                if led_blinks[new_led_co_inds[m]-1,i] == 0 and led_blinks[new_led_co_inds[m]+1,i] == 0:
+                    led_blinks[new_led_co_inds[m],i] = 0
+                else:
+                    continue
+        led_co_inds = np.where(led_blinks[:,i] == 1)[0]
+        if cleanup == 1:
+            diff_inds = np.diff(led_co_inds)
+            # last = diff_inds[-1] - diff_inds[-2]
+            # diff_inds = np.insert(blink_duration,len(blink_duration),last)
+            first = diff_inds[0] - 0
+            diff_inds = np.insert(diff_inds,0,first)
+            space_in_between = np.where(diff_inds >= min_d)[0]
+            space_in_between = space_in_between[space_in_between < max_d]
+            for q in range(space_in_between.shape[0]):
+                led_blinks[led_co_inds[space_in_between[q]-1]:led_co_inds[space_in_between[q]]] = 1
+            led_co_inds = np.where(led_blinks[:,i] == 1)[0]
+            diff_inds = np.diff(led_co_inds)
+            nzero_diff_blink_inds = np.where(diff_inds != 1)[0]
+            blink_duration = np.diff(nzero_diff_blink_inds)
+            # diff_blink_duration = np.diff(blink_duration)
+            for k in range(blink_duration.shape[0]):
+                if blink_duration[k] <= min_d:
+                    idxs = np.arange(led_co_inds[nzero_diff_blink_inds[k]+1],led_co_inds[nzero_diff_blink_inds[k]+1]-1+blink_duration[k],1)
+                    led_blinks[idxs,i] = 0 #detects if there is a sequence longer than a certain value
+                else:
+                    continue
+                
     return led_blinks
 
+# def blink_cleanup(led_blinks_detected,min_d):
+#     """
+#     Cleaning up blinks be their length and also by proximity
+#     Argumetns
+#     """
 # 4/11/2024
 # Now, I have the ellipse fitter working and now the dea is to find where the failure cases are/
 # What I have so found is two cases:
@@ -1011,6 +1337,9 @@ def blink_identification_zscore(led_coords, frame_rate=30, threshold=0.4):
 # I have now added the two circles to compared the earleir result of the pupil to the other one, and it seems that it works, but 
 # it keeps flickering very rapidly, so I wonder how it could change. I will run this version through the entire video and see how it turns out.
 
+# 6/21/2024
+# Have removed extra blinks and compared but it seems we still need first blink detection method
+# So will add after the end of the algorithm, and try to replicate on other datasets
 
 if __name__ == '__main__':
     os.chdir('/data/cortex/raw/GolDRoger/jackfish')
@@ -1029,16 +1358,16 @@ if __name__ == '__main__':
     # pupp = np.array([473.07111597, 313.96170678])
     # fidd = { 'se' : [559.0, 282.0], 'sw' : [200.10043668, 391.99344978]}
 
-    # # for 89k5 to 91k goldroger
-    # pupp = np.array([428.26662144, 333.69063772])
-    # fidd = { 'se' : [552.10762332, 305.80269058], 'sw' : [202.67213115, 397.7147541]}
+    # for 89k5 to 91k goldroger
+    pupp = np.array([428.26662144, 333.69063772])
+    fidd = { 'se' : [552.10762332, 305.80269058], 'sw' : [202.67213115, 397.7147541]}
 
-    # for 3k to 167k goldroger
-    pupp = np.array([418.0694424, 324.72649698])
-    fidd = { 'se' : [554.43661972, 312.79577465], 'sw' : [207.31304348, 409.03478261]}
+    # # for 3k to 167k goldroger
+    # pupp = np.array([418.0694424, 324.72649698])
+    # fidd = { 'se' : [554.43661972, 312.79577465], 'sw' : [207.31304348, 409.03478261]}
 
-    worker('/data/cortex/raw/GolDRoger/jackfish/cam_22248110_crop.mp4', '/home/yfaragal/07062023/July062023jf/goldroger_3k-167k/', 3000,167000,pupp,fidd,fids_parameters,pup_parameters)
-    images_to_video('/home/yfaragal/07062023/July062023jf/goldroger_3k-167k/gt_ellipse','/home/yfaragal/07062023/July062023jf/goldroger_3k-167k.mp4',30)
+    worker('/data/cortex/raw/GolDRoger/jackfish/cam_22248110_crop.mp4', '/home/yfaragal/07062023/July062023jf/goldroger_89k5-91k-zscore-two-leds-ellipse-scaling-remove-extra-thresh0p8-fixed-both/', 89500, 91000,pupp,fidd,fids_parameters,pup_parameters)
+    images_to_video('/home/yfaragal/07062023/July062023jf/goldroger_89k5-91k-zscore-two-leds-ellipse-scaling-remove-extra-thresh0p8-fixed-both/gt_ellipse','/home/yfaragal/07062023/July062023jf/goldroger_89k5-91k-ellipse-scaling-fixed-both.mp4',30)
     # images_to_video('/home/yfaragal/07062023/July062023jf/goldroger_89k-91k-zscore-two-leds-ellipse-dgt_ellipse_adj','/home/yfaragal/07062023/July062023jf/goldroger_crop9-zscore-gt-ellipse-adj.mp4',30)
     # print(rls)
     # for i in range(100):
