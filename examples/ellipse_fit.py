@@ -344,9 +344,9 @@ def fit(r):
 
     # Quadratic part of design matrix [eqn. 15] from (*)
 
-    D1 = np.mat(np.vstack([x ** 2, x * y, y ** 2])).T
+    D1 = np.asmatrix(np.vstack([x ** 2, x * y, y ** 2])).T
     # Linear part of design matrix [eqn. 16] from (*)
-    D2 = np.mat(np.vstack([x, y, np.ones(len(x))])).T
+    D2 = np.asmatrix(np.vstack([x, y, np.ones(len(x))])).T
 
     # forming scatter matrix [eqn. 17] from (*)
     S1 = D1.T * D1
@@ -354,7 +354,7 @@ def fit(r):
     S3 = D2.T * D2
 
     # Constraint matrix [eqn. 18]
-    C1 = np.mat('0. 0. 2.; 0. -1. 0.; 2. 0. 0.')
+    C1 = np.asmatrix('0. 0. 2.; 0. -1. 0.; 2. 0. 0.')
 
     # Reduced scatter matrix [eqn. 29]
     M = C1.I * (S1 - S2 * S3.I * S2.T)
@@ -420,7 +420,8 @@ def fit(r):
     height = np.sqrt(numerator / denominator2)
 
     phi = .5 * np.arctan((2. * b) / ac_subtr)
-    params = ((x0, y0), width, height, np.rad2deg(phi) % 360)
+    # print(phi)
+    params = ((x0, y0), width, height, np.rad2deg(np.real(phi)) % 360) #change to remove imaginary components (7/15/2024)
 
     #self.center, self.width, self.height, self.angle = self.params
     return params
@@ -951,35 +952,12 @@ def worker(mp4_filename, image_folder, start_frame, end_frame, pxy, fxys, proc_f
             # result = np.uint8(result)
             # output_file1 = os.path.join(newpath1, f"frame_{frame_idx}.png")
             # cv2.imwrite(output_file1, result)
-            step_size = 0.05
-            min_scale = 0.6
-            max_scale = 2.0
-            thresh = 0.02
-
-            # result, ad_width, ad_height = ground_truth_ellipse_adjustment_draw(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4],fraction=0.008)
-            frame = np.uint8(frame)
-            adj_width, adj_height = ellipse_scaling(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4], min_scale,max_scale,step_size,thresh)
-            ret, frame = video.read()
-            frame = np.uint8(np.mean(frame,axis=2))
-            if norm_idx == 0:
-                adj_w = adj_width
-                adj_h = adj_height
-            elif new_results_sw[norm_idx-1,1] == 1 or new_results_se[norm_idx-1,1] == 1:
-                adj_h,adj_w = ellipse_smoothing(adj_height, adj_width, ws_hs_new[norm_idx-1,1], ws_hs_new[norm_idx-1,0], a=1.0)
-            else:
-                adj_h,adj_w = ellipse_smoothing(adj_height, adj_width, ws_hs_new[norm_idx-1,1], ws_hs_new[norm_idx-1,0], a=0.7)
-            result = ellipse_draw(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4], adj_h, adj_w)
-            result = np.uint8(result)
-            ws_hs_new[norm_idx,0] = adj_w
-            ws_hs_new[norm_idx,1] = adj_h
-            output_file1 = os.path.join(newpath1, f"frame_{frame_idx}.png")
-            cv2.imwrite(output_file1, result)
         
         # Save the frame as an image
         elif new_results_sw[norm_idx,1] == 1 or new_results_se[norm_idx,1] == 1:
-            _processed_frame = process_frame(
-                frame, pxy, fxys, proc_pup_params, proc_fid_params,
-            ellipse=False)
+            # _processed_frame = process_frame(
+            #     frame, pxy, fxys, proc_pup_params, proc_fid_params,
+            # ellipse=False)
             result = np.uint8(frame)
             output_file1 = os.path.join(newpath1, f"frame_{frame_idx}_blink.png")
             # output_file2 = os.path.join(newpath2, f"frame_{frame_idx}_blink.png")
@@ -1008,7 +986,67 @@ def worker(mp4_filename, image_folder, start_frame, end_frame, pxy, fxys, proc_f
         #     processed_frame = [frame_idx, False, error_flag]
         #     local_results.append(processed_frame)
     # pass
-    pup_xy_group.create_dataset('data', data=pups_xys)
+    new_pups_xy_sw, new_results_sw_x = pupil_detect_blink(pups_xys, new_results_sw[:,1], std_threshold=3.0)#blink_identification_zscore(local_results_sw,threshold=0.8,min_duration=100)
+    new_pups_xy_se, new_results_se_x = pupil_detect_blink(pups_xys, new_results_se[:,1], std_threshold=3.0)#blink_identification_zscore(local_results_se,threshold=0.8,min_duration=100)
+    new_pups_xy_idx = np.where(new_pups_xy_sw[:,1] == 0)[0]
+    ws_hs_new[new_pups_xy_idx,:] = 0
+    ws_hs_old[new_pups_xy_idx,:] = 0
+    phi_s[new_pups_xy_idx] = 0
+    pups_xys[new_pups_xy_idx,:] = 0
+    # new_blink_idxs = np.where(new_results_sw_x == 1)[0]
+    # blink_idxs = np.where(new_results_sw == 1)[0]
+    for i in tqdm.tqdm(range(new_pups_xy_idx.shape[0])):
+        norm_idx = new_pups_xy_idx[i]
+        frame_idx = norm_idx + start_frame
+        output_file1 = os.path.join(newpath1, f"frame_{frame_idx}_blink.png")
+        if os.path.isfile(output_file1):
+            pass
+        else: 
+            video.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+            ret, frame = video.read()
+            if not ret:
+                break
+            frame = frame.mean(axis=2)
+            result = np.uint8(frame)
+            # output_file2 = os.path.join(newpath2, f"frame_{frame_idx}_blink.png")
+            cv2.imwrite(output_file1, result)
+    non_blink_idxs  = np.where(new_pups_xy_sw != 0)[0]
+    for i in tqdm.tqdm(range(non_blink_idxs.shape[0])):
+        norm_idx = non_blink_idxs[i]
+        frame_idx = norm_idx + start_frame
+        video.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+        ret, frame = video.read()
+        if not ret:
+            break
+        frame = frame.mean(axis=2)
+        step_size = 0.05
+        min_scale = 0.6
+        max_scale = 3.0 #was 2.0 usually 
+        thresh = 0.035 #was 0.02 usually
+
+        # result, ad_width, ad_height = ground_truth_ellipse_adjustment_draw(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4],fraction=0.008)
+        frame = np.uint8(frame)
+
+        adj_width, adj_height = ellipse_scaling(frame, pups_xys[norm_idx,:], ws_hs_old[norm_idx,0], ws_hs_old[norm_idx,1], phi_s[norm_idx], min_scale,max_scale,step_size,thresh)
+        ret, frame = video.read()
+        frame = np.uint8(np.mean(frame,axis=2))
+        if norm_idx == 0:
+            adj_w = adj_width
+            adj_h = adj_height
+        elif new_results_sw_x[norm_idx-1] == 1 or new_results_se_x[norm_idx-1] == 1:
+            adj_h,adj_w = ellipse_smoothing(adj_height, adj_width, ws_hs_new[norm_idx-1,1], ws_hs_new[norm_idx-1,0], a=1.0)
+        else:
+            adj_h,adj_w = ellipse_smoothing(adj_height, adj_width, ws_hs_new[norm_idx-1,1], ws_hs_new[norm_idx-1,0], a=0.7)
+        result = ellipse_draw(frame, new_pups_xy_sw[norm_idx,:] , ws_hs_old[norm_idx,0], ws_hs_old[norm_idx,1], phi_s[norm_idx], adj_h, adj_w)
+        result = np.uint8(result)
+        ws_hs_new[norm_idx,0] = adj_w
+        ws_hs_new[norm_idx,1] = adj_h
+        output_file1 = os.path.join(newpath1, f"frame_{frame_idx}.png")
+        cv2.imwrite(output_file1, result)
+    new_results_group_x = g.create_group('new_blinks')
+    new_results_group_x.create_dataset('sw', data=new_results_sw_x)
+    new_results_group_x.create_dataset('se', data=new_results_se_x)
+    pup_xy_group.create_dataset('data', data=new_pups_xy_sw)
     width_height_group_old.create_dataset('data', data=ws_hs_old)
     width_height_group_new.create_dataset('data', data=ws_hs_new)
     phis_group.create_dataset('data', data=phi_s)
@@ -1297,6 +1335,38 @@ def blink_identification_zscore(led_coords, frame_rate=30, threshold=0.4,cleanup
                 
     return led_blinks
 
+def pupil_detect_blink(pups_xy, blinks, std_threshold=3.0):
+    """
+    Use distribution of pupil x,y coordinates to determine if there is a blink.
+    This is a quality control after blinks are detected to remove any odd edge cases
+    and classify them as blinks
+    Input:
+    - pups_xy: pupil x and y locations (n,2)
+    - blinks: array of blinks, = blink, 0 = n bl;ink, (n)
+    - std_threshold: number of standard deviations to classify as a blink
+    Output:
+    - new_pups_xy: adjusted pupil coordinates
+    - new_blinks: adjusted blinks
+    """
+    new_pups_xy = pups_xy
+    new_blinks = blinks
+    for i in range(pups_xy.shape[1]):
+        nonzero_idx = np.where(pups_xy[:,i] != 0)[0]
+        mean_pups = np.mean(pups_xy[nonzero_idx,i])
+        std_pups = np.std(pups_xy[nonzero_idx,i])
+        edge_low = mean_pups - (std_threshold*std_pups)
+        edge_high = mean_pups + (std_threshold*std_pups)
+        idx_low = np.where(pups_xy[:,i] <= edge_low)[0]
+        idx_high = np.where(pups_xy[:,i] >= edge_high)[0]
+        new_pups_xy[idx_low,i] = 0
+        new_pups_xy[idx_high,i] = 0
+        new_blinks[idx_low] = 1
+        new_blinks[idx_high] = 1
+    zero_idx_0 = np.where(new_pups_xy[:,0] == 0)[0]
+    zero_idx_1 = np.where(new_pups_xy[:,1] == 0)[0]
+    new_pups_xy[zero_idx_0,1] = 0
+    new_pups_xy[zero_idx_1,0] = 0
+    return new_pups_xy, new_blinks
 # def blink_cleanup(led_blinks_detected,min_d):
 #     """
 #     Cleaning up blinks be their length and also by proximity
@@ -1366,8 +1436,13 @@ if __name__ == '__main__':
     # pupp = np.array([418.0694424, 324.72649698])
     # fidd = { 'se' : [554.43661972, 312.79577465], 'sw' : [207.31304348, 409.03478261]}
 
-    worker('/data/cortex/raw/GolDRoger/jackfish/cam_22248110_crop.mp4', '/home/yfaragal/07062023/July062023jf/goldroger_89k5-91k-zscore-two-leds-ellipse-scaling-remove-extra-thresh0p8-fixed-both/', 89500, 91000,pupp,fidd,fids_parameters,pup_parameters)
-    images_to_video('/home/yfaragal/07062023/July062023jf/goldroger_89k5-91k-zscore-two-leds-ellipse-scaling-remove-extra-thresh0p8-fixed-both/gt_ellipse','/home/yfaragal/07062023/July062023jf/goldroger_89k5-91k-ellipse-scaling-fixed-both.mp4',30)
+    pupp_rocks = np.array([431.51479671, 249.23160062])
+    fidd_rocks = {'se': [555.28481013, 195.24683544], 'sw': [206.43378995, 293.02739726]}
+    pup_parameters_rocks = [6, 40, 95, 188] # new params for larger pupil detection instead of [3, 20, 50, 208]  bad [5, 50, 90, 158]
+    fids_parameters_rocks =  [1, 2, 20, 80] # for 4/22/2024 params 89k5 91k new 
+
+    worker('/home/yfaragal/eyetracking_data/RocksDXebec/cam_22248110_crop.mp4', '/home/yfaragal/eyetracking_data/RocksDXebec/geezer_ellipse_scaling_changes_usually/', 149100, 150900, pupp_rocks,fidd_rocks,fids_parameters_rocks,pup_parameters_rocks)
+    images_to_video('/home/yfaragal/eyetracking_data/RocksDXebec/geezer_ellipse_scaling_changes_usually/gt_ellipse','/home/yfaragal/eyetracking_data/RocksDXebec/geezer_ellipse_scaling_changes_usually.mp4',30)
     # images_to_video('/home/yfaragal/07062023/July062023jf/goldroger_89k-91k-zscore-two-leds-ellipse-dgt_ellipse_adj','/home/yfaragal/07062023/July062023jf/goldroger_crop9-zscore-gt-ellipse-adj.mp4',30)
     # print(rls)
     # for i in range(100):
@@ -1377,3 +1452,17 @@ if __name__ == '__main__':
 
 
     # JBM: crop function reduces image quality, can do indexing instead
+
+
+    # For rocks here are the values:
+    # pupil 3, 20, 50, 208
+    # leds 1, 2, 20, 80
+    
+    # here is where you record data from: 1h22m50s to 1h23m50s
+#     [431.51479671 249.23160062]
+# se
+# [555.28481013 195.24683544]
+# sw
+# [206.43378995 293.02739726]
+
+# Note: when looking at geezer, don't run full time do one for smaller pupil sizes and another for larger pupil sizes

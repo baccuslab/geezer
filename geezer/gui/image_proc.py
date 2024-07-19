@@ -55,6 +55,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 # from utils import process_frame
 import geezer
+import geezer.core.image_processing as image_processing
 # import utils
 from geezer.gui.geometry import GeometryTab
 import IPython
@@ -164,7 +165,6 @@ rx_subtract = np.array(
 # pupil max and min radii
 min_radius = 2
 max_radius = 100
-
 
 # rcParams: set default so that axis isn't shown and no x or yticks
 plt.rcParams["axes.axisbelow"] = False
@@ -661,6 +661,8 @@ class ImageProcTab(QWidget):
             local_results = []
             local_results_sw = np.zeros((end_frame-start_frame,2))
             local_results_se = np.zeros((end_frame-start_frame,2))
+            ws_hs_old = np.zeros((end_frame-start_frame,2))
+            ws_hs_new = np.zeros((end_frame-start_frame,2))
             # g = h5.File('results.h5', 'w')
             # new_results_group = g.create_group('new_results')
             for frame_idx in tqdm.tqdm(range(start_frame, end_frame)):
@@ -668,9 +670,9 @@ class ImageProcTab(QWidget):
                 ret, frame = video.read()
                 frame = frame.mean(axis=2)
                 if ret:
-                    _processed_frame = geezer.process_frame_fids(frame, fxys, proc_fid_params)
-                    local_results_sw[frame_idx-start_frame,:] = _processed_frame['sw']
-                    local_results_se[frame_idx-start_frame,:] = _processed_frame['se']
+                    _processed_fram = image_processing.process_frame_fids(frame, fxys, proc_fid_params)
+                    local_results_sw[frame_idx-start_frame,:] = _processed_fram['sw']
+                    local_results_se[frame_idx-start_frame,:] = _processed_fram['se']
 
                     # try:
                     #     frame = frame.mean(axis=2)
@@ -694,9 +696,12 @@ class ImageProcTab(QWidget):
                     # processed_frame = [frame_idx, False, error_flag]
                     # local_results.append(processed_frame)
             # ws_hs_old = np.zeros((end_frame-start_frame,2))
-            new_results_sw = geezer.blink_identification_zscore(local_results_sw,threshold=0.5)
-            new_results_se = geezer.blink_identification_zscore(local_results_se,threshold=0.5)
+            new_results_sw = image_processing.blink_identification_zscore(local_results_sw,threshold=0.5)
+            new_results_se = image_processing.blink_identification_zscore(local_results_se,threshold=0.5)
+            pups_xys = np.zeros((end_frame-start_frame,2))
+            print('neeeeeeeeeeeeeeew')
             # ws_hs_new = np.zeros((end_frame-start_frame,2))
+            _processed_frames = np.zeros((end_frame-start_frame),dtype=object)
             for frame_idx in tqdm.tqdm(range(start_frame, end_frame)):
                 video.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
                 ret, frame = video.read()
@@ -706,7 +711,7 @@ class ImageProcTab(QWidget):
                 norm_idx = frame_idx-start_frame
                 print(norm_idx)
                 if new_results_se[norm_idx,1] == 0 and new_results_sw[norm_idx,1] == 0: #use index 1 as there is usually a lot of horizontal eye movements
-                    _processed_frame = geezer.process_frame(
+                    _processed_frame = image_processing.process_frame(
                         frame, pxy, fxys, proc_pup_params, proc_fid_params,
                     ellipse=True)
                     # result = ground_truth_ellipse(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4])
@@ -714,21 +719,81 @@ class ImageProcTab(QWidget):
                     # ws_hs_old[norm_idx,1] = _processed_frame[3]
                     # phi_s[norm_idx] = _processed_frame[4]
                     # pups_xys[norm_idx,:] = _processed_frame[0]
-                    result, ad_width, ad_height = geezer.ground_truth_ellipse_adjustment_draw(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4],fraction=0.008)
+                    # result, ad_width, ad_height = image_processing.ground_truth_ellipse_adjustment_draw(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4],fraction=0.008)
                     # result = np.uint8(result)
                     # ws_hs_new[norm_idx,0] = ad_width
                     # ws_hs_new[norm_idx,1] = ad_height
-                    processed_frame = [frame_idx, _processed_frame, 0, adj_width, adj_height]
-                    local_results.append(processed_frame)
+                    _processed_frames[norm_idx]= _processed_frame
+                    pups_xys[norm_idx,:] = _processed_frame[0]
+                    ws_hs_old[norm_idx,0] = _processed_frame[2]
+                    ws_hs_old[norm_idx,1] = _processed_frame[3]
+                    ws_hs_new[norm_idx,0] = _processed_frame[2]
+                    ws_hs_new[norm_idx,1] = _processed_frame[3]
                 elif new_results_se[norm_idx,1] == 1 or new_results_sw[norm_idx,1] == 1: 
-                    _processed_frame = process_frame(
+                    _processed_frame = image_processing.process_frame(
                         frame, pxy, fxys, proc_pup_params, proc_fid_params,
                     ellipse=False)
                     # result = np.uint8(frame)
-                    processed_frame = [frame_idx, _processed_frame, 1, 0, 0]
-                    local_results.append(processed_frame)
-            # g.close()
+                    _processed_frames[norm_idx]= _processed_frame
+                    pups_xys[norm_idx,:] = _processed_frame[0]
 
+
+ 
+
+            # g.close()
+            new_pups_xy_sw, new_results_sw_x = image_processing.pupil_detect_blink(pups_xys, new_results_sw[:,1], std_threshold=3.0)#blink_identification_zscore(local_results_sw,threshold=0.8,min_duration=100)
+            new_pups_xy_se, new_results_se_x = image_processing.pupil_detect_blink(pups_xys, new_results_se[:,1], std_threshold=3.0)#blink_identification_zscore(local_results_se,threshold=0.8,min_duration=100)
+            new_pups_xy_idx = np.where(new_pups_xy_sw[:,1] == 0)[0]
+            pups_xys[new_pups_xy_idx,:] = 0
+            ws_hs_new[new_pups_xy_idx,:] = 0
+            ws_hs_old[new_pups_xy_idx,:] = 0
+            non_blink_idxs  = np.where(new_pups_xy_sw != 0)[0]
+            _processed_frames[new_pups_xy_idx][0] = 0
+            _processed_frames[new_pups_xy_idx][2] = 0
+            _processed_frames[new_pups_xy_idx][3] = 0
+            _processed_frames[new_pups_xy_idx][4] = 0
+            for i in tqdm.tqdm(range(non_blink_idxs.shape[0])):
+                norm_idx = non_blink_idxs[i]
+                frame_idx = norm_idx + start_frame
+                video.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+                ret, frame = video.read()
+                if not ret:
+                    break
+                frame = frame.mean(axis=2)
+                step_size = 0.05
+                min_scale = 0.6
+                max_scale = 3.0 #was 2.0 usually 
+                thresh = 0.035 #was 0.02 usually
+
+                # result, ad_width, ad_height = ground_truth_ellipse_adjustment_draw(frame, _processed_frame[0], _processed_frame[2], _processed_frame[3], _processed_frame[4],fraction=0.008)
+                frame = np.uint8(frame)
+                frame_pro = _processed_frames[norm_idx]
+                pxys = frame_pro[0]
+                wid = frame_pro[2]
+                hei = frame_pro[3]
+                phis = frame_pro[4]
+                adj_width, adj_height = image_processing.ellipse_scaling(frame, pxys, wid, hei, phis, min_scale,max_scale,step_size,thresh)
+                # ret, frame = video.read()
+                # frame = np.uint8(np.mean(frame,axis=2))
+                if norm_idx == 0:
+                    adj_w = adj_width
+                    adj_h = adj_height
+                elif new_results_sw_x[norm_idx-1] == 1 or new_results_se_x[norm_idx-1] == 1:
+                    adj_h,adj_w = image_processing.ellipse_smoothing(adj_height, adj_width, ws_hs_new[norm_idx-1,1], ws_hs_new[norm_idx-1,0], a=1.0)
+                else:
+                    adj_h,adj_w = image_processing.ellipse_smoothing(adj_height, adj_width, ws_hs_new[norm_idx-1,1], ws_hs_new[norm_idx-1,0], a=0.7)
+                ws_hs_new[norm_idx,0] = adj_w
+                ws_hs_new[norm_idx,1] = adj_h
+                processed_frame = [frame_idx, frame_pro, 0, adj_w, adj_h]
+                local_results.append(processed_frame)
+
+            for i in tqdm.tqdm(range(new_pups_xy_idx.shape[0])):
+                norm_idx = new_pups_xy_idx[i]
+                frame_pro = _processed_frames[norm_idx]
+                frame_idx = norm_idx + start_frame
+                processed_frame = [frame_idx,frame_pro, 1, 0, 0]
+                local_results.append(processed_frame)
+            
             # Append local results to the shared list
             result_list.extend(local_results)
             video.release()
@@ -766,6 +831,8 @@ class ImageProcTab(QWidget):
         save_new_widths = np.array([x[3] for x in results])
         save_new_heights = np.array([x[4] for x in results])
         save_fiducial_coordinates = {}
+        error_messages = np.array([x[1][1] for x in results])
+        meta["error_messages"] = error_messages
         
 
         fiducials_names = results[0][1][1].keys()
@@ -782,7 +849,6 @@ class ImageProcTab(QWidget):
 
             save_pupil_co = np.array(save_pupil_co)[sidx]
             f.create_dataset("pup_co", data=save_pupil_co)
-
             f.create_dataset("width", data=save_new_widths[sidx])
             f.create_dataset("height", data=save_new_heights[sidx])
             f.create_dataset("phi", data=save_phis[sidx])
