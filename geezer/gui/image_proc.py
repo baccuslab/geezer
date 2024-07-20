@@ -723,7 +723,7 @@ class ImageProcTab(QWidget):
                     # result = np.uint8(result)
                     # ws_hs_new[norm_idx,0] = ad_width
                     # ws_hs_new[norm_idx,1] = ad_height
-                    _processed_frames[norm_idx]= _processed_frame
+                    _processed_frames[norm_idx]= np.array(_processed_frame)
                     pups_xys[norm_idx,:] = _processed_frame[0]
                     ws_hs_old[norm_idx,0] = _processed_frame[2]
                     ws_hs_old[norm_idx,1] = _processed_frame[3]
@@ -734,7 +734,7 @@ class ImageProcTab(QWidget):
                         frame, pxy, fxys, proc_pup_params, proc_fid_params,
                     ellipse=False)
                     # result = np.uint8(frame)
-                    _processed_frames[norm_idx]= _processed_frame
+                    _processed_frames[norm_idx]= np.array(_processed_frame)
                     pups_xys[norm_idx,:] = _processed_frame[0]
 
 
