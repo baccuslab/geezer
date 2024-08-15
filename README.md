@@ -19,6 +19,10 @@ This program requires Qt and X11 forwarding, which is available on Linux systems
 To do so, our recommendation is to download MobaXterm (https://mobaxterm.mobatek.net/) and access WSL through it. MobaXterm has 
 X11-forwarding capabilities that other programs such as VS Code might not have built in.
 
+### 1. For Ubuntu
+- create a new environment
+- `sudo apt-get install python3-qt5`
+- `pip3 install numpy, matplotlib, opencv-python-headless, h5py, scikit-image, tqdm, jupyter`
 
 ## Usage
 ### 0. *(optional)* Crop original video to remove irrelevant pixels
