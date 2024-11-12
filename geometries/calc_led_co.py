@@ -19,9 +19,9 @@ def point_on_line(start, end, N):
     return x, y
 
 # Test the function
-monitor_start = (-13.5, -7.6)
-monitor_end = (0, 8.75)
-N = 21.25-6.25
+monitor_start = (-13.5, 0.5)
+monitor_end = (0, 17)
+N = 2.5
 
 
 point_x, point_y = point_on_line(monitor_start, monitor_end, N)
